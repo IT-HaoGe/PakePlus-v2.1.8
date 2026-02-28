@@ -1,11 +1,1566 @@
 <!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>PakePlus</title>
-    </head>
-    <body>
-        Hello World
-    </body>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>快捷回复助手 v2.0 (附件支持版) @IT豪哥</title>
+    <style>
+        :root {
+            --primary-color: #07c160;
+            --primary-hover: #06ad56;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --bg-color: #f3f4f6;
+            --text-color: #1f2937;
+            --border-color: #e5e7eb;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            overflow-y: scroll; 
+        }
+
+        .container {
+            max-width: 800px; margin: 0 auto; background: #fff;
+            padding: 25px 30px; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);
+        }
+
+        h1 {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            margin-top: 0;
+            margin-bottom: 25px;
+            color: #111827;
+            gap: 10px;
+        }
+
+        .app-logo {
+            width: 55px;      
+            height: 55px;
+        }
+
+        .version-badge {
+            font-size: 13px; font-weight: 500; color: #6b7280; background: #f3f4f6;
+            padding: 4px 10px; border-radius: 999px; margin-left: 12px; margin-top: 4px; letter-spacing: 0.5px;
+            text-decoration: none; transition: color 0.2s, background 0.2s;
+        }
+        .version-badge:hover { color: var(--primary-color); background: #e0fceb; }
+
+        /* 访问密码验证层 */
+        .auth-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color); display: flex; justify-content: center; align-items: center; z-index: 10000;
+        }
+        .auth-content { background: #fff; padding: 35px; border-radius: 12px; width: 320px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); text-align: center; box-sizing: border-box; }
+        .auth-content h2 { margin-top: 0; margin-bottom: 25px; font-size: 22px; color: #111827; }
+        .auth-content input[type="password"] {
+            width: 100%; padding: 12px; border: 2px solid var(--border-color);
+            border-radius: 8px; font-size: 16px; box-sizing: border-box; margin-bottom: 15px; text-align: center; transition: all 0.3s;
+        }
+        .auth-content input[type="password"]:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 4px 12px rgba(7, 193, 96, 0.15); }
+        .auth-content button { width: 100%; padding: 12px; font-size: 16px; border-radius: 8px; font-weight: bold; background: var(--primary-color); border:none; color:#fff; cursor: pointer; }
+        .auth-error { color: var(--danger-color); font-size: 14px; margin-bottom: 15px; display: none; font-weight: 500; }
+
+        .search-section {
+            margin-bottom: 20px; position: sticky; top: 0; background: #fff;
+            z-index: 10; padding-bottom: 10px; border-bottom: 1px solid var(--border-color);
+        }
+
+        /* 分类标签区 */
+        .category-tabs {
+            display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 10px;
+            margin-bottom: 15px; padding-bottom: 5px; scrollbar-width: none;
+        }
+        .category-tabs::-webkit-scrollbar { display: none; }
+
+        .cat-tab {
+            white-space: nowrap; padding: 6px 16px; background: #f3f4f6; color: #4b5563;
+            border-radius: 999px; cursor: pointer; font-size: 14px; transition: all 0.2s;
+            user-select: none; display: flex; align-items: center; gap: 5px;
+        }
+        .cat-tab:hover { filter: brightness(0.95); }
+        .cat-tab.active { box-shadow: 0 4px 10px rgba(0,0,0,0.18); }
+        .cat-tab.dragging { opacity: 0.5; transform: scale(1.05); }
+
+        .cat-tab-add { background: transparent; border: 1px dashed #07c160; color: #07c160; font-weight: 500; }
+        .cat-tab-add:hover { background: #f0fdf4; }
+
+        /* 搜索框 */
+        .search-box { position: relative; margin-bottom: 15px; display: flex; align-items: center; }
+        .search-box input[type="text"] {
+            flex: 1; min-width: 0; width: 100%; padding: 14px 45px 14px 45px; border: 2px solid var(--primary-color);
+            border-radius: 10px; font-size: 16px; box-sizing: border-box; transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(7, 193, 96, 0.1); 
+            background: #fff url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="%2307c160" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>') no-repeat 14px center;
+        }
+        .search-box input[type="text"]:focus { outline: none; border-color: var(--primary-hover); }
+
+        .clear-btn { 
+            position: absolute; right: 15px; top: 50%; transform: translateY(-50%);
+            font-size: 24px; color: #9ca3af; cursor: pointer; line-height: 1; display: none; user-select: none; 
+        }
+        .clear-btn.show { display: block; }
+        .clear-btn:hover { color: var(--danger-color); }
+
+        /* 标签栏 */
+        .tags-tabs {
+            display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 8px;
+            margin-bottom: 15px; padding-bottom: 5px; scrollbar-width: none;
+        }
+        .tags-tabs::-webkit-scrollbar { display: none; }
+        
+        .tag-tab {
+            white-space: nowrap; padding: 4px 12px; background: #f3f4f6; color: #4b5563;
+            border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.2s;
+            user-select: none; display: flex; align-items: center; gap: 4px; border: 1px solid transparent;
+        }
+        .tag-tab:hover { filter: brightness(0.95); }
+        .tag-tab.active { box-shadow: 0 4px 10px rgba(0,0,0,0.15); border-color: rgba(0,0,0,0.1); font-weight: bold; transform: scale(1.02); }
+        .tag-tab.dragging { opacity: 0.5; transform: scale(1.05); }
+
+        .search-history-dropdown {
+            position: absolute; top: calc(100% + 5px); left: 0; width: 100%; background: #fff;
+            border: 1px solid var(--border-color); border-radius: 10px; box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+            z-index: 20; display: none; max-height: 250px; overflow-y: auto; padding: 15px; box-sizing: border-box;
+        }
+        .search-history-dropdown.show { display: block; animation: fadeIn 0.2s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .history-header { font-size: 13px; color: #9ca3af; margin-bottom: 12px; font-weight: 600; }
+        .history-list { display: flex; flex-wrap: wrap; gap: 10px; }
+        .history-item { display: inline-flex; align-items: center; background: #f3f4f6; padding: 6px 14px; border-radius: 999px; font-size: 14px; color: #4b5563; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; }
+        .history-item:hover { background: #fff; border-color: var(--primary-color); color: var(--primary-color); box-shadow: 0 2px 6px rgba(7, 193, 96, 0.1); }
+        .history-text { pointer-events: none; }
+        .history-delete { color: #9ca3af; font-size: 16px; margin-left: 6px; line-height: 1; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; pointer-events: auto; }
+        .history-delete:hover { color: var(--danger-color); background: rgba(239, 68, 68, 0.1); }
+
+        /* 数据管理区 */
+        .admin-panel { background: #f9fafb; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; margin-bottom: 15px; }
+        .admin-panel summary { padding: 10px 15px; font-size: 14px; font-weight: bold; color: #4b5563; cursor: pointer; user-select: none; display: flex; align-items: center; }
+        .admin-panel summary::-webkit-details-marker { display: none; }
+        .admin-panel summary::before { content: "⚙️"; margin-right: 8px; }
+        .admin-content { padding: 15px; border-top: 1px solid var(--border-color); }
+
+        textarea { width: 100%; height: 100px; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; resize: vertical; font-family: inherit; box-sizing: border-box; margin-bottom: 10px; }
+        textarea:focus { outline: none; border-color: var(--primary-color); }
+        .cat-input { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; box-sizing: border-box; margin-bottom: 10px; }
+        .cat-input:focus { outline: none; border-color: var(--primary-color); }
+
+        .btn-group { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 5px; }
+        button { background-color: var(--primary-color); color: white; border: none; padding: 8px 16px; font-size: 14px; border-radius: 6px; cursor: pointer; transition: opacity 0.2s; }
+        button:hover { opacity: 0.85; }
+        button:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn-success { background-color: var(--success-color); }
+        .btn-danger { background-color: var(--danger-color); }
+        .btn-outline { background-color: white; color: var(--primary-color); border: 1px solid var(--primary-color); }
+        .btn-action { background: #fff; color: #4b5563; border: 1px solid #cbd5e1; font-weight: 500; }
+        .btn-action:hover:not(:disabled) { background: #f8fafc; color: var(--primary-color); border-color: var(--primary-color); }
+
+        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; flex-wrap: wrap; gap: 10px; }
+        .search-stats { font-size: 14px; color: #6b7280; font-weight: 500; }
+
+        /* 结果与编辑区 */
+        .result-list { display: flex; flex-direction: column; gap: 12px; min-height: 200px; }
+        .result-item { background: #fff; border: 1px solid var(--border-color); border-radius: 10px; transition: all 0.2s; }
+        .item-view { padding: 16px; cursor: pointer; position: relative; font-size: 15px; border-radius: 10px; padding-right: 80px; }
+        .item-view:hover { background: #f8fafc; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-color: var(--primary-color); }
+        .item-view::after { content: "点击复制文字"; position: absolute; right: 15px; top: 15px; font-size: 12px; background: var(--primary-color); color: #fff; padding: 4px 10px; border-radius: 6px; opacity: 0; transition: opacity 0.2s; pointer-events: none;}
+        .item-view:hover::after { opacity: 1; }
+        
+        .badge-cat { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 12px; margin-right: 8px; vertical-align: middle; font-weight: 500; border: 1px solid rgba(0,0,0,0.05); }
+        .badge-tag { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-right: 6px; vertical-align: middle; font-weight: 500; }
+        .badge-tag::before { content: '#'; opacity: 0.6; margin-right: 2px; }
+        
+        .badge-clickable { cursor: pointer; transition: all 0.2s; }
+        .badge-clickable:hover { transform: scale(1.05) translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.15); filter: brightness(0.95); }
+
+        .item-text { color: #374151; white-space: pre-wrap; word-break: break-all; vertical-align: middle; }
+        .edit-btn { position: absolute; right: 15px; bottom: 15px; background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; padding: 4px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; transition: all 0.2s; z-index: 2; font-weight: 500;}
+        .edit-btn:hover { background: #e2e8f0; color: var(--primary-color); border-color: var(--primary-color); }
+        .item-edit { padding: 16px; background: #f0fdf4; border-radius: 10px; border: 1px dashed var(--primary-color); }
+        
+        mark { background-color: #fef08a; color: #b45309; padding: 0 2px; border-radius: 2px; font-weight: bold; }
+        .empty-state { text-align: center; color: #9ca3af; padding: 40px 20px; font-size: 15px; }
+
+        /* 附件展示相关 */
+        .attachments-list { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 15px; padding-top: 15px; border-top: 1px dashed #e5e7eb; }
+        .att-item { display: inline-flex; align-items: center; gap: 10px; background: #f9fafb; border: 1px solid #e5e7eb; padding: 6px 12px; border-radius: 8px; transition: background 0.2s; cursor: default; }
+        .att-item:hover { background: #f3f4f6; border-color: #cbd5e1; }
+        .att-img { height: 50px; border-radius: 4px; object-fit: cover; background: #fff; border: 1px solid #d1d5db; cursor: pointer; transition: transform 0.2s; }
+        .att-img:hover { transform: scale(1.1); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .att-info { display: flex; flex-direction: column; gap: 4px; }
+        .att-name { font-size: 13px; font-weight: 500; color: #374151; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; user-select: none; }
+        .att-actions { display: flex; gap: 8px; }
+        .att-btn { font-size: 12px; color: var(--primary-color); font-weight: 500; background: none; border: none; padding: 0; cursor: pointer; }
+        .att-btn:hover { text-decoration: underline; color: var(--primary-hover); }
+        
+        /* 编辑模式下的附件 */
+        .edit-att-area { margin-bottom: 15px; background: #fff; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 12px; }
+        .edit-att-list { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+        .edit-att-item { display: flex; align-items: center; justify-content: space-between; font-size: 13px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 6px 12px; border-radius: 6px; }
+
+        /* 模态框通用 */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 9999; backdrop-filter: blur(2px); }
+        .modal-overlay.show { display: flex; }
+        .modal-content { background: #fff; padding: 25px; border-radius: 12px; width: 340px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); }
+        .modal-content h3 { margin-top: 0; margin-bottom: 15px; font-size: 18px; color: #1f2937; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-size: 13px; color: #4b5563; font-weight: bold; }
+        .form-group input[type="text"] { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
+        
+        .color-picker-group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .color-swatch { width: 30px; height: 30px; border-radius: 50%; cursor: pointer; box-shadow: 0 0 0 1px #d1d5db; transition: all 0.2s; }
+        .color-swatch:hover { transform: scale(1.1); }
+        .color-swatch.selected { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--primary-color); transform: scale(1.1); }
+        
+        .custom-color-wrapper { position: relative; width: 30px; height: 30px; border-radius: 50%; box-shadow: 0 0 0 1px #d1d5db; transition: all 0.2s; cursor: pointer; background: #fff; }
+        .custom-color-wrapper input[type="color"] { width: 100%; height: 100%; opacity: 0; cursor: pointer; position: absolute; top:0; left:0; z-index: 2; }
+        .custom-color-wrapper::after { content: "🎨"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 14px; pointer-events: none; }
+        .custom-color-wrapper:hover { transform: scale(1.1); }
+        .custom-color-wrapper.selected { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--primary-color); transform: scale(1.1); }
+        .custom-color-wrapper.selected::after { opacity: 0; }
+
+        .color-hex-input { width: 90px; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; font-family: monospace; outline: none; transition: border-color 0.2s; }
+        .color-hex-input:focus { border-color: var(--primary-color); }
+
+        .toast { visibility: hidden; min-width: 200px; background-color: #1f2937; color: #fff; text-align: center; border-radius: 30px; padding: 12px 20px; position: fixed; z-index: 1000; left: 50%; bottom: 30px; transform: translateX(-50%); opacity: 0; transition: opacity 0.3s, bottom 0.3s; }
+        .toast.show { visibility: visible; opacity: 1; bottom: 50px; }
+    </style>
+</head>
+<body>
+
+    <div class="auth-overlay" id="authOverlay">
+        <div class="auth-content">
+            <h2>🔒 访问验证</h2>
+            <input type="password" id="authPassword" placeholder="请输入访问密码" autocomplete="off">
+            <div class="auth-error" id="authError">密码错误，请重试</div>
+            <button onclick="checkAuth()">进入助手</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>
+            <img src="logo.png" alt="快捷回复助手 Logo" class="app-logo" onerror="this.style.display='none'">
+            快捷回复助手
+            <a href="https://www.ithaoge.cn/" target="_blank" class="version-badge" title="IT豪哥-电脑教程网">v2.0 @IT豪哥</a>
+        </h1>
+
+        <div class="search-section">
+            
+            <!-- 分类切换区 -->
+            <div class="category-tabs" id="categoryTabs"></div>
+
+            <!-- 搜索框 -->
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="在当前分类搜索关键词 (多词用空格隔开)..." autocomplete="off">
+                <span class="clear-btn" id="clearSearchBtn" title="清除内容">&times;</span>
+                <div class="search-history-dropdown" id="searchHistoryDropdown"></div>
+            </div>
+
+            <!-- 全局标签筛选区 -->
+            <div class="tags-tabs" id="tagsTabs"></div>
+
+            <!-- 数据管理区 -->
+            <details class="admin-panel" id="adminPanel">
+                <summary>数据与配置管理 (导入 / 导出 / 清空)</summary>
+                <div class="admin-content">
+                    <p style="font-size:13px; color:#6b7280; margin-top:0;">
+                        格式示例 (不同话术之间请使用 <b>---</b> 隔开，带有标签和配置也能智能还原)：<br>
+                        <b>[售前问候]</b><br><b>[Tags: 重点, 节日]</b><br>亲，您好，有什么可以帮您？<br><b>---</b><br>
+                    </p>
+                    <textarea id="dataInput" placeholder="在此粘贴纯文本数据... (如果不写[分类名]，将默认存入“未分类”)"></textarea>
+                    <div class="btn-group">
+                        <button onclick="importFromTextarea(true)">➕ 追加导入文本</button>
+                        <input type="file" id="fileInput" accept=".txt,.json" style="display: none;" onchange="handleFileImport(event)">
+                        <button class="btn-outline" onclick="document.getElementById('fileInput').click()">📄 导入备份 (JSON/TXT)</button>
+                        <button class="btn-success" onclick="exportData(true)" title="完整导出为JSON，包含图片及附件">💾 完整备份导出 (.json)</button>
+                        <button class="btn-action" onclick="exportData(false)" title="仅导出纯文本(忽略附件)">📝 导出文本 (.txt)</button>
+                        <button class="btn-danger" onclick="clearData()" style="margin-left:auto;">🗑️ 清空所有话术</button>
+                    </div>
+                </div>
+            </details>
+
+            <div class="toolbar">
+                <div class="search-stats" id="searchStats">正在读取数据...</div>
+                <div class="history-actions">
+                    <button style="background:var(--primary-hover); font-weight:bold;" onclick="openAddBox()">➕ 新增单条话术</button>
+                    <button class="btn-action" id="undoBtn" onclick="undo()" disabled title="撤销修改">↩️</button>
+                    <button class="btn-action" id="redoBtn" onclick="redo()" disabled title="重做">↪️</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="addBoxContainer" style="display:none; margin-bottom: 15px;"></div>
+        <div id="resultContainer" class="result-list"></div>
+    </div>
+
+    <div id="toast" class="toast">操作成功！</div>
+
+    <!-- 分类编辑模态框 -->
+    <div class="modal-overlay" id="catEditModal">
+        <div class="modal-content">
+            <h3 id="catModalTitle">编辑分类</h3>
+            <div class="form-group">
+                <label>分类名称</label>
+                <input type="text" id="catModalName" placeholder="例如：售后处理">
+            </div>
+            <div class="form-group">
+                <label>背景颜色 (点击色块或输入Hex/RGB)</label>
+                <div class="color-picker-group" id="catColorPickerGroup">
+                    <div class="color-swatch" style="background-color: #f3f4f6;" onclick="selectCatColor(this, '#f3f4f6')"></div>
+                    <div class="color-swatch" style="background-color: #e0e7ff;" onclick="selectCatColor(this, '#e0e7ff')"></div>
+                    <div class="color-swatch" style="background-color: #dcfce7;" onclick="selectCatColor(this, '#dcfce7')"></div>
+                    <div class="color-swatch" style="background-color: #fef08a;" onclick="selectCatColor(this, '#fef08a')"></div>
+                    <div class="color-swatch" style="background-color: #ffe4e6;" onclick="selectCatColor(this, '#ffe4e6')"></div>
+                    <div class="color-swatch" style="background-color: #e0f2fe;" onclick="selectCatColor(this, '#e0f2fe')"></div>
+                    <div class="custom-color-wrapper" id="catCustomColorWrapper" title="自定义颜色">
+                        <input type="color" id="catModalBgCustom" oninput="applyCatCustomColor(this)">
+                    </div>
+                    <div style="flex-grow: 1; text-align: right;">
+                        <input type="text" id="catModalBgText" class="color-hex-input" placeholder="#HEX/RGB" oninput="applyCatCustomColorText(this)">
+                    </div>
+                </div>
+            </div>
+            <div class="btn-group" style="justify-content: space-between; margin-bottom: 0;">
+                <button class="btn-danger" id="delCatBtn" onclick="deleteCategoryModal()">🗑️ 删除</button>
+                <div>
+                    <button class="btn-outline" onclick="closeCatModal()">取消</button>
+                    <button class="btn-success" onclick="saveCatModal()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 标签编辑模态框 -->
+    <div class="modal-overlay" id="tagEditModal">
+        <div class="modal-content">
+            <h3 id="tagModalTitle">编辑标签</h3>
+            <div class="form-group">
+                <label>标签名称</label>
+                <input type="text" id="tagModalName" placeholder="例如：重点">
+            </div>
+            <div class="form-group">
+                <label>背景颜色 (点击色块或输入Hex/RGB)</label>
+                <div class="color-picker-group" id="tagColorPickerGroup">
+                    <div class="color-swatch" style="background-color: #f3f4f6;" onclick="selectTagColor(this, '#f3f4f6')"></div>
+                    <div class="color-swatch" style="background-color: #e0e7ff;" onclick="selectTagColor(this, '#e0e7ff')"></div>
+                    <div class="color-swatch" style="background-color: #dcfce7;" onclick="selectTagColor(this, '#dcfce7')"></div>
+                    <div class="color-swatch" style="background-color: #fef08a;" onclick="selectTagColor(this, '#fef08a')"></div>
+                    <div class="color-swatch" style="background-color: #ffe4e6;" onclick="selectTagColor(this, '#ffe4e6')"></div>
+                    <div class="color-swatch" style="background-color: #e0f2fe;" onclick="selectTagColor(this, '#e0f2fe')"></div>
+                    <div class="custom-color-wrapper" id="tagCustomColorWrapper" title="自定义颜色">
+                        <input type="color" id="tagModalBgCustom" oninput="applyTagCustomColor(this)">
+                    </div>
+                    <div style="flex-grow: 1; text-align: right;">
+                        <input type="text" id="tagModalBgText" class="color-hex-input" placeholder="#HEX/RGB" oninput="applyTagCustomColorText(this)">
+                    </div>
+                </div>
+            </div>
+            <div class="btn-group" style="justify-content: space-between; margin-bottom: 0;">
+                <button class="btn-danger" id="delTagBtn" onclick="deleteTagModal()">🗑️ 删除</button>
+                <div>
+                    <button class="btn-outline" onclick="closeTagModal()">取消</button>
+                    <button class="btn-success" onclick="saveTagModal()">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 防泄露图片内存池及临时附件区 -->
+    <script>
+        window.activeObjectURLs =[];
+        window.tempEditFiles = {};
+    </script>
+
+    <script>
+        const ACCESS_PASSWORD = '520771'; 
+        const STORAGE_KEY_AUTH = 'quick_reply_auth';
+        const STORAGE_KEY_DATA = 'quick_reply_data';
+        const STORAGE_KEY_CATS = 'quick_reply_cats';
+        const STORAGE_KEY_TAGS = 'quick_reply_tags';
+        const STORAGE_KEY_HISTORY = 'quick_reply_history';
+        const PRESET_COLORS =["#f3f4f6", "#e0e7ff", "#dcfce7", "#fef08a", "#ffe4e6", "#e0f2fe"];
+        
+        // ----------------- IndexedDB Wrapper -----------------
+        const idb = {
+            db: null,
+            init() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open('QuickReplyDB', 1);
+                    request.onupgradeneeded = (e) => {
+                        const db = e.target.result;
+                        if (!db.objectStoreNames.contains('store')) {
+                            db.createObjectStore('store');
+                        }
+                    };
+                    request.onsuccess = (e) => {
+                        this.db = e.target.result;
+                        resolve();
+                    };
+                    request.onerror = (e) => reject(e.target.error);
+                });
+            },
+            get(key) {
+                return new Promise((resolve, reject) => {
+                    const tx = this.db.transaction('store', 'readonly');
+                    const store = tx.objectStore('store');
+                    const req = store.get(key);
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => reject(req.error);
+                });
+            },
+            set(key, value) {
+                return new Promise((resolve, reject) => {
+                    const tx = this.db.transaction('store', 'readwrite');
+                    const store = tx.objectStore('store');
+                    const req = store.put(value, key);
+                    req.onsuccess = () => resolve();
+                    req.onerror = () => reject(req.error);
+                });
+            }
+        };
+
+        // 数据迁移
+        async function migrateFromLocalStorage() {
+            const keys =[STORAGE_KEY_AUTH, STORAGE_KEY_DATA, STORAGE_KEY_CATS, STORAGE_KEY_TAGS, STORAGE_KEY_HISTORY];
+            for (let key of keys) {
+                const lsVal = localStorage.getItem(key);
+                if (lsVal !== null) {
+                    try {
+                        let parsed = lsVal;
+                        if (key !== STORAGE_KEY_AUTH) parsed = JSON.parse(lsVal);
+                        await idb.set(key, parsed);
+                        localStorage.removeItem(key); 
+                    } catch (e) { }
+                }
+            }
+        }
+
+        let entriesData =[];  // { id, category, tags:[], text, files:[] }
+        let categories =[];   // { name, bg }
+        let tags = [];         // { name, bg }
+        let searchHistory =[];
+        
+        let currentCategory = '全部';
+        let currentTag = null; 
+        
+        let undoStack =[];
+        let redoStack =[];
+        let draggedCatIndex = null;
+        let draggedTagIndex = null;
+        
+        let editingCatIndex = -1;
+        let selectedColorCat = "#f3f4f6"; 
+        let editingTagIndex = -1;
+        let selectedColorTag = "#f3f4f6"; 
+        
+        let currentNewId = null;
+
+        document.addEventListener('contextmenu', function(e) { if (document.getElementById('authOverlay').style.display !== 'none') e.preventDefault(); });
+        document.addEventListener('keydown', function(e) { if (document.getElementById('authOverlay').style.display !== 'none') { if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I')) e.preventDefault(); } });
+
+        window.onload = async function() { 
+            await idb.init(); 
+            await migrateFromLocalStorage(); 
+            checkAuthInit(); 
+        };
+
+        async function checkAuthInit() {
+            const isAuth = await idb.get(STORAGE_KEY_AUTH);
+            if (isAuth === 'true' || isAuth === true) {
+                document.getElementById('authOverlay').style.display = 'none';
+                initApp(); 
+            } else {
+                document.getElementById('authOverlay').style.display = 'flex';
+                document.getElementById('authPassword').focus();
+                document.getElementById('authPassword').addEventListener('keydown', function(e) { if (e.key === 'Enter') checkAuth(); });
+            }
+        }
+
+        async function checkAuth() {
+            const pwd = document.getElementById('authPassword').value;
+            if (pwd === ACCESS_PASSWORD) {
+                await idb.set(STORAGE_KEY_AUTH, 'true');
+                document.getElementById('authOverlay').style.display = 'none';
+                initApp(); 
+            } else {
+                document.getElementById('authError').style.display = 'block';
+                document.getElementById('authPassword').value = '';
+                document.getElementById('authPassword').focus();
+            }
+        }
+
+        async function initApp() {
+            const savedData = await idb.get(STORAGE_KEY_DATA);
+            if (savedData) {
+                entriesData = savedData; 
+                entriesData.forEach(e => { if(!e.tags) e.tags =[]; if(!e.files) e.files = []; });
+            } else {
+                entriesData =[];
+            }
+            
+            const savedCats = await idb.get(STORAGE_KEY_CATS);
+            if (savedCats) {
+                categories = savedCats;
+            } else {
+                let catNames =[...new Set(entriesData.map(e => e.category))];
+                categories = catNames.filter(c => c !== '未分类').map(name => ({ name, bg: '#f3f4f6' }));
+                saveCatsToLocal();
+            }
+            
+            const savedTags = await idb.get(STORAGE_KEY_TAGS);
+            if (savedTags) tags = savedTags;
+            
+            const savedHistory = await idb.get(STORAGE_KEY_HISTORY);
+            if(savedHistory) searchHistory = savedHistory;
+
+            updateUI();
+            updateUndoRedoButtons();
+        }
+
+        function getContrastColor(colorStr) {
+            if(!colorStr) return '#1f2937';
+            if (colorStr.toLowerCase().startsWith('rgb')) {
+                const match = colorStr.match(/\d+/g);
+                if (match && match.length >= 3) {
+                    const r = parseInt(match[0]), g = parseInt(match[1]), b = parseInt(match[2]);
+                    const yiq = ((r*299)+(g*587)+(b*114))/1000;
+                    return (yiq >= 128) ? '#1f2937' : '#ffffff';
+                }
+            }
+            let hex = colorStr.replace('#', '');
+            if(hex.length === 3) hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+            if(hex.length !== 6) return '#1f2937'; 
+            const r = parseInt(hex.substr(0,2),16), g = parseInt(hex.substr(2,2),16), b = parseInt(hex.substr(4,2),16);
+            if(isNaN(r) || isNaN(g) || isNaN(b)) return '#1f2937';
+            const yiq = ((r*299)+(g*587)+(b*114))/1000;
+            return (yiq >= 128) ? '#1f2937' : '#ffffff';
+        }
+
+        function updateUI() {
+            renderCategories();
+            renderTags();
+            renderResults();
+            const searchInput = document.getElementById('searchInput');
+            searchInput.disabled = entriesData.length === 0;
+            if (entriesData.length === 0) searchInput.placeholder = "暂无数据，请先导入或新增话术...";
+            else searchInput.placeholder = `在【${currentCategory}】中搜索关键词...`;
+        }
+
+        // ================= 分类渲染与拖拽 =================
+        function renderCategories() {
+            const container = document.getElementById('categoryTabs');
+            container.innerHTML = '';
+            
+            let allCatNames = categories.map(c => c.name);
+            if (currentCategory !== '全部' && currentCategory !== '未分类' && !allCatNames.includes(currentCategory)) {
+                currentCategory = '全部';
+            }
+
+            container.appendChild(createCatTab('全部', '#f3f4f6', null, false));
+            categories.forEach((catObj, index) => {
+                const tab = createCatTab(catObj.name, catObj.bg, index, true);
+                container.appendChild(tab);
+            });
+
+            const hasUncategorized = entriesData.some(e => !allCatNames.includes(e.category));
+            if (hasUncategorized) {
+                container.appendChild(createCatTab('未分类', '#f3f4f6', null, false));
+            }
+
+            const addTab = document.createElement('div');
+            addTab.className = 'cat-tab cat-tab-add'; addTab.innerText = '+ 新分类';
+            addTab.onclick = () => openCatModal(-1);
+            container.appendChild(addTab);
+        }
+
+        function createCatTab(name, bg, index, isDraggable) {
+            const tab = document.createElement('div');
+            tab.className = `cat-tab ${currentCategory === name ? 'active' : ''}`;
+            tab.style.backgroundColor = bg;
+            tab.style.color = getContrastColor(bg);
+            const count = name === '全部' ? entriesData.length : entriesData.filter(e => e.category === name).length;
+            tab.innerText = `${name} (${count})`;
+            
+            tab.onclick = () => {
+                if (currentCategory === name) return; 
+                currentCategory = name;
+                document.getElementById('searchInput').placeholder = `在【${currentCategory}】中搜索关键词...`;
+                const allTabs = document.querySelectorAll('#categoryTabs .cat-tab');
+                allTabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                renderResults();
+            };
+
+            if (isDraggable) {
+                tab.draggable = true; tab.title = "左键切换 / 右键编辑 / 按住拖拽排序";
+                tab.ondragstart = (e) => { draggedCatIndex = index; e.dataTransfer.effectAllowed = 'move'; setTimeout(() => tab.classList.add('dragging'), 0); };
+                tab.ondragend = () => tab.classList.remove('dragging');
+                tab.ondragover = (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
+                tab.ondrop = (e) => {
+                    e.preventDefault();
+                    if (draggedCatIndex !== null && draggedCatIndex !== index) {
+                        const movedItem = categories.splice(draggedCatIndex, 1)[0];
+                        categories.splice(index, 0, movedItem);
+                        saveCatsToLocal(); updateUI();
+                    }
+                };
+                tab.oncontextmenu = (e) => { e.preventDefault(); openCatModal(index); };
+            }
+            return tab;
+        }
+
+        // ================= 全局标签渲染与拖拽 =================
+        function renderTags() {
+            const container = document.getElementById('tagsTabs');
+            container.innerHTML = '';
+            
+            if (currentTag && !tags.some(t => t.name === currentTag)) currentTag = null;
+
+            tags.forEach((tagObj, index) => {
+                const tab = document.createElement('div');
+                tab.className = `tag-tab ${currentTag === tagObj.name ? 'active' : ''}`;
+                tab.style.backgroundColor = tagObj.bg;
+                tab.style.color = getContrastColor(tagObj.bg);
+
+                const count = entriesData.filter(e => e.tags && e.tags.includes(tagObj.name)).length;
+                tab.innerText = `# ${tagObj.name} (${count})`;
+
+                tab.draggable = true;
+                tab.title = "左键过滤 / 右键编辑 / 按住拖拽排序";
+
+                tab.onclick = () => {
+                    currentTag = currentTag === tagObj.name ? null : tagObj.name;
+                    renderTags(); 
+                    renderResults();
+                };
+
+                tab.ondragstart = (e) => { draggedTagIndex = index; e.dataTransfer.effectAllowed = 'move'; setTimeout(() => tab.classList.add('dragging'), 0); };
+                tab.ondragend = () => tab.classList.remove('dragging');
+                tab.ondragover = (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
+                tab.ondrop = (e) => {
+                    e.preventDefault();
+                    if (draggedTagIndex !== null && draggedTagIndex !== index) {
+                        const movedItem = tags.splice(draggedTagIndex, 1)[0];
+                        tags.splice(index, 0, movedItem);
+                        saveTagsToLocal(); updateUI();
+                    }
+                };
+                tab.oncontextmenu = (e) => { e.preventDefault(); openTagModal(index); };
+                container.appendChild(tab);
+            });
+
+            const addTab = document.createElement('div');
+            addTab.className = 'tag-tab cat-tab-add'; addTab.innerText = '+ 新标签';
+            addTab.onclick = () => openTagModal(-1);
+            container.appendChild(addTab);
+        }
+
+        // ================= 搜索 =================
+        const searchInput = document.getElementById('searchInput');
+        const clearBtn = document.getElementById('clearSearchBtn');
+        const historyDropdown = document.getElementById('searchHistoryDropdown');
+        let searchTimeout;
+
+        searchInput.addEventListener('input', (e) => {
+            toggleClearBtn(); renderResults(); clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => { recordSearch(e.target.value.trim()); }, 1500);
+        });
+        searchInput.addEventListener('keydown', function(e) {
+            if(e.key === 'Enter') { clearTimeout(searchTimeout); recordSearch(this.value.trim()); historyDropdown.classList.remove('show'); }
+        });
+        searchInput.addEventListener('focus', () => { if(searchHistory.length > 0) { renderSearchHistory(); historyDropdown.classList.add('show'); } });
+        searchInput.addEventListener('blur', () => { setTimeout(() => { historyDropdown.classList.remove('show'); }, 200); });
+
+        function toggleClearBtn() {
+            if(searchInput.value.length > 0) clearBtn.classList.add('show'); else clearBtn.classList.remove('show');
+        }
+        clearBtn.addEventListener('click', () => { searchInput.value = ''; toggleClearBtn(); renderResults(); searchInput.focus(); });
+
+        function recordSearch(keyword) {
+            if (!keyword) return;
+            searchHistory = searchHistory.filter(h => h.toLowerCase() !== keyword.toLowerCase());
+            searchHistory.unshift(keyword);
+            if (searchHistory.length > 15) searchHistory.pop();
+            idb.set(STORAGE_KEY_HISTORY, searchHistory);
+            if (document.activeElement === searchInput) renderSearchHistory();
+        }
+
+        function renderSearchHistory() {
+            historyDropdown.innerHTML = '';
+            if(searchHistory.length === 0) { historyDropdown.classList.remove('show'); return; }
+            const header = document.createElement('div'); header.className = 'history-header'; header.innerText = '搜索历史';
+            historyDropdown.appendChild(header);
+            const listContainer = document.createElement('div'); listContainer.className = 'history-list';
+
+            searchHistory.forEach((kw, idx) => {
+                const item = document.createElement('div'); item.className = 'history-item';
+                item.onclick = () => { searchInput.value = kw; toggleClearBtn(); recordSearch(kw); renderResults(); };
+                const textSpan = document.createElement('span'); textSpan.className = 'history-text'; textSpan.innerText = kw;
+                const delSpan = document.createElement('span'); delSpan.className = 'history-delete'; delSpan.innerHTML = '&times;';
+                delSpan.onclick = (e) => { e.stopPropagation(); searchHistory.splice(idx, 1); idb.set(STORAGE_KEY_HISTORY, searchHistory); renderSearchHistory(); searchInput.focus(); };
+                item.appendChild(textSpan); item.appendChild(delSpan); listContainer.appendChild(item);
+            });
+            historyDropdown.appendChild(listContainer);
+        }
+
+        // ================= 结果渲染 =================
+        function renderResults() {
+            window.activeObjectURLs.forEach(url => URL.revokeObjectURL(url));
+            window.activeObjectURLs =[];
+
+            const container = document.getElementById('resultContainer');
+            const statsEl = document.getElementById('searchStats');
+            container.innerHTML = ''; 
+
+            if (entriesData.length === 0) {
+                statsEl.innerText = `本地总条目：0 条`;
+                container.innerHTML = `<div class="empty-state">本地暂无数据，请点击上方按钮导入或新增</div>`;
+                return;
+            }
+
+            const searchVal = searchInput.value.trim();
+            const keywords = searchVal ? searchVal.split(/\s+/).filter(Boolean) :[];
+            
+            const filtered = entriesData.filter(item => {
+                const matchCat = currentCategory === '全部' || item.category === currentCategory || (currentCategory === '未分类' && !categories.map(c=>c.name).includes(item.category));
+                const matchKw = keywords.every(kw => item.text.toLowerCase().includes(kw.toLowerCase()));
+                const matchTag = !currentTag || (item.tags && item.tags.includes(currentTag));
+                return matchCat && matchKw && matchTag;
+            });
+
+            if (keywords.length > 0 || currentTag) {
+                statsEl.innerHTML = `找到 <strong style="color:var(--primary-color)">${filtered.length}</strong> 条结果`;
+            } else {
+                statsEl.innerHTML = `当前视图总计 <strong>${filtered.length}</strong> 条话术`;
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="empty-state">没有找到符合条件的内容</div>`;
+                return;
+            }
+
+            filtered.forEach((item) => {
+                const div = document.createElement('div'); div.className = 'result-item';
+                const viewDiv = document.createElement('div'); viewDiv.className = 'item-view';
+
+                if (currentCategory === '全部') {
+                    const catObj = categories.find(c => c.name === item.category);
+                    const bg = catObj ? catObj.bg : '#f3f4f6';
+                    const catBadge = document.createElement('span');
+                    catBadge.className = 'badge-cat badge-clickable';
+                    catBadge.innerText = item.category || '未分类';
+                    catBadge.style.backgroundColor = bg;
+                    catBadge.style.color = getContrastColor(bg);
+                    catBadge.title = "点击过滤并跳转至该分类";
+                    catBadge.onclick = (e) => {
+                        e.stopPropagation(); 
+                        currentCategory = item.category || '未分类';
+                        document.getElementById('searchInput').placeholder = `在【${currentCategory}】中搜索关键词...`;
+                        const allTabs = document.querySelectorAll('#categoryTabs .cat-tab');
+                        allTabs.forEach(t => { if (t.innerText.startsWith(currentCategory + ' (')) t.classList.add('active'); else t.classList.remove('active'); });
+                        renderResults(); window.scrollTo({ top: 0, behavior: 'smooth' }); 
+                    };
+                    viewDiv.appendChild(catBadge);
+                }
+
+                if(item.tags && item.tags.length > 0) {
+                    item.tags.forEach(t => {
+                        const tagObj = tags.find(x => x.name === t);
+                        const bg = tagObj ? tagObj.bg : '#f3f4f6';
+                        const tBadge = document.createElement('span');
+                        tBadge.className = 'badge-tag badge-clickable';
+                        tBadge.innerText = t;
+                        tBadge.style.backgroundColor = bg;
+                        tBadge.style.color = getContrastColor(bg);
+                        tBadge.title = "点击切换过滤该标签";
+                        tBadge.onclick = (e) => {
+                            e.stopPropagation();
+                            currentTag = currentTag === t ? null : t;
+                            renderTags(); renderResults(); window.scrollTo({ top: 0, behavior: 'smooth' });
+                        };
+                        viewDiv.appendChild(tBadge);
+                    });
+                }
+
+                const textSpan = document.createElement('div');
+                textSpan.className = 'item-text';
+                textSpan.innerHTML = generateHighlightedHTML(item.text, keywords);
+                if(currentCategory === '全部' || (item.tags && item.tags.length > 0)) {
+                    textSpan.style.marginTop = '8px';
+                }
+                viewDiv.appendChild(textSpan);
+
+                // 附件渲染
+                if (item.files && item.files.length > 0) {
+                    const filesDiv = document.createElement('div');
+                    filesDiv.className = 'attachments-list';
+                    item.files.forEach((f, fIdx) => {
+                        const fileBlob = f.blob || f.data;
+                        const objUrl = URL.createObjectURL(fileBlob);
+                        window.activeObjectURLs.push(objUrl);
+
+                        const isImg = f.type.startsWith('image/');
+                        const attItem = document.createElement('div');
+                        attItem.className = 'att-item';
+                        
+                        let visualHtml = '';
+                        if (isImg) {
+                            visualHtml = `<img src="${objUrl}" class="att-img" title="点击查看大图" onclick="window.open('${objUrl}')" />`;
+                        } else {
+                            visualHtml = `<span style="font-size:24px; cursor:pointer;" title="尝试在浏览器中打开" onclick="window.open('${objUrl}')">📄</span>`;
+                        }
+
+                        attItem.innerHTML = `
+                            ${visualHtml}
+                            <div class="att-info">
+                                <span class="att-name" title="${escapeHTML(f.name)}">${escapeHTML(f.name)}</span>
+                                <div class="att-actions">
+                                    <button class="att-btn" onclick="window.open('${objUrl}')">查看</button>
+                                    ${isImg ? `<button class="att-btn" onclick="copyImageObj(${item.id}, ${fIdx}, this)">复制</button>` : ''}
+                                    <button class="att-btn" onclick="downloadFileObj(${item.id}, ${fIdx})">下载</button>
+                                </div>
+                            </div>
+                        `;
+                        filesDiv.appendChild(attItem);
+                    });
+                    viewDiv.appendChild(filesDiv);
+                }
+
+                const editBtn = document.createElement('button');
+                editBtn.className = 'edit-btn'; editBtn.innerHTML = '✏️ 编辑';
+                editBtn.onclick = (e) => { e.stopPropagation(); openEditMode(div, item); };
+
+                // 避免点击附件时触发复制文本
+                viewDiv.onclick = (e) => {
+                    if (e.target.closest('.attachments-list') || e.target.closest('.edit-btn') || e.target.closest('.badge-clickable')) return;
+                    if(item.text) copyToClipboard(item.text);
+                };
+
+                viewDiv.appendChild(editBtn);
+                div.appendChild(viewDiv); container.appendChild(div);
+            });
+        }
+
+        function generateHighlightedHTML(text, keywords) {
+            if (keywords.length === 0) return escapeHTML(text);
+            const sortedKeywords = keywords.slice().sort((a, b) => b.length - a.length);
+            const regexPattern = new RegExp(`(${sortedKeywords.map(escapeRegExp).join('|')})`, 'gi');
+            const parts = text.split(regexPattern);
+            return parts.map((part, index) => (index % 2 === 1) ? `<mark>${escapeHTML(part)}</mark>` : escapeHTML(part)).join('');
+        }
+
+        // ================= 新增/编辑功能 =================
+        function generateQuickSelectHtml() {
+            let html = '';
+            if(categories.length > 0) {
+                const cBadges = categories.map(c => `<span class="badge-cat" style="cursor:pointer; background:${c.bg}; color:${getContrastColor(c.bg)}; margin-bottom:5px; display:inline-block;" onclick="document.getElementById('addCatInput').value='${c.name}'; document.querySelectorAll('.edit-category').forEach(el=>el.value='${c.name}')">${c.name}</span>`).join('');
+                html += `<div style="font-size:12px; color:#6b7280; margin-bottom:5px;">分类快速选择：${cBadges}</div>`;
+            }
+            if(tags.length > 0) {
+                const tBadges = tags.map(c => `<span class="badge-tag" style="cursor:pointer; background:${c.bg}; color:${getContrastColor(c.bg)}; margin-bottom:5px; display:inline-block;" onclick="addQuickTag(this, '${c.name}')">${c.name}</span>`).join('');
+                html += `<div style="font-size:12px; color:#6b7280; margin-bottom:8px;">标签快速添加：${tBadges}</div>`;
+            }
+            return html;
+        }
+
+        function addQuickTag(btn, tagName) {
+            const input = btn.closest('.item-edit').querySelector('.tag-input');
+            let vals = input.value.split(',').map(s=>s.trim()).filter(Boolean);
+            if(!vals.includes(tagName)) {
+                vals.push(tagName);
+                input.value = vals.join(', ');
+            }
+        }
+
+        function parseTagsInput(val) {
+            return val.split(',').map(s=>s.trim()).filter(Boolean);
+        }
+
+        window.handleFileSelect = function(inputEl, id) {
+            const files = Array.from(inputEl.files);
+            for(let file of files) {
+                if (file.size > 100 * 1024 * 1024) { alert(`文件 ${file.name} 超过 100MB 限制！`); continue; }
+                window.tempEditFiles[id].push({ name: file.name, type: file.type, blob: file });
+            }
+            inputEl.value = ''; 
+            renderEditFilesArea(id);
+        };
+
+        window.removeTempFile = function(id, fileIndex) {
+            window.tempEditFiles[id].splice(fileIndex, 1);
+            renderEditFilesArea(id);
+        };
+
+        function renderEditFilesArea(id) {
+            const container = document.getElementById(`edit_att_list_${id}`);
+            const files = window.tempEditFiles[id];
+            if (!container) return;
+            if (files.length === 0) {
+                container.innerHTML = '<span style="font-size:12px; color:#9ca3af;">暂无附件</span>'; return;
+            }
+            container.innerHTML = files.map((f, fIdx) => `
+                <div class="edit-att-item">
+                    <span style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHTML(f.name)}">
+                        ${f.type.startsWith('image/') ? '🖼️' : '📄'} ${escapeHTML(f.name)}
+                    </span>
+                    <button class="btn-danger" style="padding:2px 8px; font-size:12px;" onclick="removeTempFile('${id}', ${fIdx})">移除</button>
+                </div>
+            `).join('');
+        }
+
+        function openAddBox() {
+            const container = document.getElementById('addBoxContainer');
+            container.style.display = 'block';
+            const defaultCat = (currentCategory === '全部' || currentCategory === '未分类') ? (categories[0]?.name || '未分类') : currentCategory;
+            
+            currentNewId = 'new_' + Date.now();
+            window.tempEditFiles[currentNewId] =[];
+
+            container.innerHTML = `
+                <div class="item-edit" style="box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                    <div style="font-weight:bold; margin-bottom:10px; color:var(--primary-color);">➕ 新增话术</div>
+                    ${generateQuickSelectHtml()}
+                    <div style="display:flex; gap:10px;">
+                        <input type="text" class="cat-input" id="addCatInput" value="${defaultCat}" placeholder="分类名称 (必填)" style="width:40%;">
+                        <input type="text" class="cat-input tag-input" id="addTagInput" placeholder="标签 (多个用逗号分隔，可选)" style="flex:1;">
+                    </div>
+                    <textarea id="addTextInput" placeholder="请输入话术内容..."></textarea>
+                    
+                    <div class="edit-att-area">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-size:13px; font-weight:bold; color:#475569;">📎 附件列表</span>
+                            <button class="btn-outline" style="padding:4px 10px; font-size:12px;" onclick="document.getElementById('file_input_${currentNewId}').click()">+ 添加图片/文件</button>
+                            <input type="file" id="file_input_${currentNewId}" style="display:none" multiple onchange="handleFileSelect(this, '${currentNewId}')">
+                        </div>
+                        <div class="edit-att-list" id="edit_att_list_${currentNewId}"></div>
+                    </div>
+
+                    <div class="btn-group" style="margin-bottom:0;">
+                        <button onclick="saveNewEntry()">💾 确认添加</button>
+                        <button class="btn-outline" onclick="cancelAdd()">取消</button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('addTextInput').focus();
+            renderEditFilesArea(currentNewId);
+        }
+
+        function cancelAdd() {
+            delete window.tempEditFiles[currentNewId];
+            document.getElementById('addBoxContainer').style.display = 'none';
+        }
+
+        function saveNewEntry() {
+            const cat = document.getElementById('addCatInput').value.trim() || '未分类';
+            const tagStrs = parseTagsInput(document.getElementById('addTagInput').value);
+            const text = document.getElementById('addTextInput').value.trim();
+            const newFiles = window.tempEditFiles[currentNewId] ||[];
+
+            if (!text && newFiles.length === 0) return alert("内容与附件不能同时为空！");
+            if (text && entriesData.some(e => e.text === text && (!e.files || e.files.length === 0) && newFiles.length === 0)) {
+                return alert("该话术已存在库中！避免重复添加。");
+            }
+
+            saveState();
+            entriesData.unshift({ id: Date.now()+Math.random(), category: cat, tags: tagStrs, text: text, files: newFiles });
+            
+            delete window.tempEditFiles[currentNewId];
+
+            if (cat !== '未分类' && !categories.find(c => c.name === cat)) categories.push({ name: cat, bg: '#f3f4f6' });
+            tagStrs.forEach(t => { if(!tags.find(x => x.name === t)) tags.push({ name: t, bg: '#f3f4f6' }); });
+            
+            saveCatsToLocal(); saveTagsToLocal(); saveDataToLocal();
+            document.getElementById('addBoxContainer').style.display = 'none';
+            currentCategory = cat;
+            updateUI(); showToast("添加成功");
+        }
+
+        function openEditMode(parentDiv, itemObj) {
+            const tagsStr = (itemObj.tags ||[]).join(', ');
+            
+            window.tempEditFiles[itemObj.id] = itemObj.files ? [...itemObj.files] :[];
+
+            parentDiv.innerHTML = `
+                <div class="item-edit">
+                    ${generateQuickSelectHtml()}
+                    <div style="display:flex; gap:10px;">
+                        <input type="text" class="cat-input edit-category" value="${escapeHTML(itemObj.category)}" placeholder="分类名称" style="width:40%;">
+                        <input type="text" class="cat-input tag-input edit-tag" value="${escapeHTML(tagsStr)}" placeholder="标签 (多个用逗号分隔，可选)" style="flex:1;">
+                    </div>
+                    <textarea class="edit-textarea">${escapeHTML(itemObj.text)}</textarea>
+                    
+                    <div class="edit-att-area">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-size:13px; font-weight:bold; color:#475569;">📎 附件列表</span>
+                            <button class="btn-outline" style="padding:4px 10px; font-size:12px;" onclick="document.getElementById('file_input_${itemObj.id}').click()">+ 添加图片/文件</button>
+                            <input type="file" id="file_input_${itemObj.id}" style="display:none" multiple onchange="handleFileSelect(this, '${itemObj.id}')">
+                        </div>
+                        <div class="edit-att-list" id="edit_att_list_${itemObj.id}"></div>
+                    </div>
+
+                    <div class="btn-group" style="margin-bottom:0;">
+                        <button onclick="saveEdit(${itemObj.id}, this)">💾 保存</button>
+                        <button class="btn-outline" onclick="cancelEdit('${itemObj.id}')">取消</button>
+                        <button class="btn-danger" style="margin-left:auto;" onclick="deleteEntry(${itemObj.id}, event)">🗑️ 删除此条</button>
+                    </div>
+                </div>
+            `;
+            renderEditFilesArea(itemObj.id);
+        }
+
+        function cancelEdit(id) {
+            delete window.tempEditFiles[id];
+            renderResults();
+        }
+
+        function saveEdit(id, btnEl) {
+            const parent = btnEl.parentElement.parentElement;
+            const newCat = parent.querySelector('.edit-category').value.trim() || '未分类';
+            const newTags = parseTagsInput(parent.querySelector('.edit-tag').value);
+            const newText = parent.querySelector('.edit-textarea').value.trim();
+            const newFiles = window.tempEditFiles[id] ||[];
+
+            if (!newText && newFiles.length === 0) return alert("内容与附件不能同时为空！如需删除请点击【删除此条】按钮。");
+            
+            const target = entriesData.find(e => e.id === id);
+            if (newText !== target.text && newFiles.length === 0 && entriesData.some(e => e.id !== id && e.text === newText && (!e.files || e.files.length === 0))) {
+                return alert("修改后的文本与库中已有纯文本话术重复！");
+            }
+
+            saveState();
+            target.category = newCat; target.tags = newTags; target.text = newText; target.files = newFiles;
+            
+            delete window.tempEditFiles[id];
+
+            if (newCat !== '未分类' && !categories.find(c => c.name === newCat)) categories.push({ name: newCat, bg: '#f3f4f6' });
+            newTags.forEach(t => { if(!tags.find(x => x.name === t)) tags.push({ name: t, bg: '#f3f4f6' }); });
+
+            saveCatsToLocal(); saveTagsToLocal(); saveDataToLocal(); updateUI();
+        }
+
+        function deleteEntry(id, e) {
+            if (e) e.stopPropagation();
+            saveState(); entriesData = entriesData.filter(e => e.id !== id);
+            saveDataToLocal(); updateUI();
+        }
+
+        // ================= 附件相关操作 =================
+        async function copyImageObj(id, fileIndex, btnEl) {
+            const item = entriesData.find(e => e.id === id);
+            const fileObj = item.files[fileIndex];
+            const blob = fileObj.blob || fileObj.data;
+            try {
+                let pngBlob = blob;
+                if (blob.type !== 'image/png') {
+                    btnEl.innerText = "转换中...";
+                    const img = new Image();
+                    const url = URL.createObjectURL(blob);
+                    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width; canvas.height = img.height;
+                    const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0);
+                    pngBlob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+                    URL.revokeObjectURL(url);
+                }
+                const clipboardItem = new ClipboardItem({ 'image/png': pngBlob });
+                await navigator.clipboard.write([clipboardItem]);
+                showToast("✅ 图片已成功复制到剪贴板！");
+            } catch (err) {
+                console.error(err);
+                alert("当前浏览器可能限制了直接复制该图片，请尝试直接点击【下载】。");
+            } finally {
+                btnEl.innerText = "复制";
+            }
+        }
+
+        function downloadFileObj(id, fileIndex) {
+            const item = entriesData.find(e => e.id === id);
+            const fileObj = item.files[fileIndex];
+            const url = URL.createObjectURL(fileObj.blob || fileObj.data);
+            const a = document.createElement('a');
+            a.href = url; a.download = fileObj.name;
+            document.body.appendChild(a); a.click();
+            document.body.removeChild(a); URL.revokeObjectURL(url);
+        }
+
+        // ================= 分类模态框 =================
+        function openCatModal(index) {
+            editingCatIndex = index;
+            document.getElementById('catModalTitle').innerText = index >= 0 ? "编辑分类" : "新增空白分类";
+            document.getElementById('delCatBtn').style.display = index >= 0 ? "block" : "none";
+            let currentBg = index >= 0 ? categories[index].bg : "#f3f4f6";
+            document.getElementById('catModalName').value = index >= 0 ? categories[index].name : "";
+            
+            updateCatColorPickerUI(currentBg);
+            document.getElementById('catEditModal').classList.add('show');
+            document.getElementById('catModalName').focus();
+        }
+
+        function closeCatModal() { document.getElementById('catEditModal').classList.remove('show'); editingCatIndex = -1; }
+
+        function selectCatColor(element, colorHex) {
+            selectedColorCat = colorHex;
+            document.querySelectorAll('#catColorPickerGroup .color-swatch').forEach(el => el.classList.remove('selected'));
+            document.getElementById('catCustomColorWrapper').classList.remove('selected'); document.getElementById('catCustomColorWrapper').style.backgroundColor = '#fff';
+            document.getElementById('catModalBgText').value = colorHex;
+            if(element) element.classList.add('selected');
+        }
+
+        function applyCatCustomColor(inputEl) {
+            selectedColorCat = inputEl.value;
+            document.querySelectorAll('#catColorPickerGroup .color-swatch').forEach(el => el.classList.remove('selected'));
+            document.getElementById('catCustomColorWrapper').classList.add('selected'); document.getElementById('catCustomColorWrapper').style.backgroundColor = selectedColorCat;
+            document.getElementById('catModalBgText').value = selectedColorCat;
+        }
+
+        function applyCatCustomColorText(inputEl) {
+            const val = inputEl.value.trim(); selectedColorCat = val || '#f3f4f6';
+            document.querySelectorAll('#catColorPickerGroup .color-swatch').forEach(el => el.classList.remove('selected'));
+            document.getElementById('catCustomColorWrapper').classList.add('selected'); document.getElementById('catCustomColorWrapper').style.backgroundColor = selectedColorCat;
+            if(/^#[0-9A-F]{6}$/i.test(val)) document.getElementById('catModalBgCustom').value = val;
+        }
+
+        function updateCatColorPickerUI(bgHex) {
+            selectedColorCat = bgHex; document.getElementById('catModalBgText').value = bgHex;
+            document.querySelectorAll('#catColorPickerGroup .color-swatch').forEach(el => el.classList.remove('selected'));
+            document.getElementById('catCustomColorWrapper').classList.remove('selected'); document.getElementById('catCustomColorWrapper').style.backgroundColor = '#fff';
+
+            if (PRESET_COLORS.includes(bgHex.toLowerCase())) {
+                const targetSwatch = document.querySelector(`#catColorPickerGroup .color-swatch[onclick*="${bgHex.toLowerCase()}"]`);
+                if(targetSwatch) targetSwatch.classList.add('selected');
+            } else {
+                document.getElementById('catCustomColorWrapper').classList.add('selected'); document.getElementById('catCustomColorWrapper').style.backgroundColor = bgHex;
+                if(/^#[0-9A-F]{6}$/i.test(bgHex)) document.getElementById('catModalBgCustom').value = bgHex;
+            }
+        }
+
+        function saveCatModal() {
+            const newName = document.getElementById('catModalName').value.trim();
+            if (!newName) return alert("名称不能为空！");
+            if (newName === '全部' || newName === '未分类') return alert("不能使用系统保留名称！");
+            if(categories.some((t, i) => i !== editingCatIndex && t.name === newName)) return alert("该分类已存在！");
+
+            saveState(); 
+            if (editingCatIndex >= 0) {
+                const oldName = categories[editingCatIndex].name;
+                categories[editingCatIndex].name = newName; categories[editingCatIndex].bg = selectedColorCat;
+                entriesData.forEach(e => { if(e.category === oldName) e.category = newName; });
+                if(currentCategory === oldName) currentCategory = newName;
+            } else {
+                categories.push({ name: newName, bg: selectedColorCat }); currentCategory = newName; 
+            }
+            saveCatsToLocal(); saveDataToLocal(); updateUI(); closeCatModal();
+        }
+
+        function deleteCategoryModal() {
+            if (confirm(`确定要删除此分类吗？\n注：该分类下的话术不会丢失，将自动移入"未分类"中。`)) {
+                saveState();
+                const oldName = categories[editingCatIndex].name;
+                categories.splice(editingCatIndex, 1);
+                entriesData.forEach(e => { if(e.category === oldName) e.category = '未分类'; });
+                if(currentCategory === oldName) currentCategory = '全部';
+                saveCatsToLocal(); saveDataToLocal(); updateUI(); closeCatModal();
+            }
+        }
+
+        // ================= 标签模态框 =================
+        function openTagModal(index) {
+            editingTagIndex = index;
+            document.getElementById('tagModalTitle').innerText = index >= 0 ? "编辑标签" : "新增空白标签";
+            document.getElementById('delTagBtn').style.display = index >= 0 ? "block" : "none";
+            let currentBg = index >= 0 ? tags[index].bg : "#f3f4f6";
+            document.getElementById('tagModalName').value = index >= 0 ? tags[index].name : "";
+            
+            updateTagColorPickerUI(currentBg);
+            document.getElementById('tagEditModal').classList.add('show');
+            document.getElementById('tagModalName').focus();
+        }
+
+        function closeTagModal() { document.getElementById('tagEditModal').classList.remove('show'); editingTagIndex = -1; }
+
+        function selectTagColor(element, colorHex) {
+            selectedColorTag = colorHex;
+            document.querySelectorAll('#tagColorPickerGroup .color-swatch').forEach(el => el.classList.remove('selected'));
+            document.getElementById('tagCustomColorWrapper').classList.remove('selected'); document.getElementById('tagCustomColorWrapper').style.backgroundColor = '#fff';
+            document.getElementById('tagModalBgText').value = colorHex;
+            if(element) element.classList.add('selected');
+        }
+
+        function applyTagCustomColor(inputEl) {
+            selectedColorTag = inputEl.value;
+            document.querySelectorAll('#tagColorPickerGroup .color-swatch').forEach(el => el.classList.remove('selected'));
+            document.getElementById('tagCustomColorWrapper').classList.add('selected'); document.getElementById('tagCustomColorWrapper').style.backgroundColor = selectedColorTag;
+            document.getElementById('tagModalBgText').value = selectedColorTag;
+        }
+
+        function applyTagCustomColorText(inputEl) {
+            const val = inputEl.value.trim(); selectedColorTag = val || '#f3f4f6';
+            document.querySelectorAll('#tagColorPickerGroup .color-swatch').forEach(el => el.classList.remove('selected'));
+            document.getElementById('tagCustomColorWrapper').classList.add('selected'); document.getElementById('tagCustomColorWrapper').style.backgroundColor = selectedColorTag;
+            if(/^#[0-9A-F]{6}$/i.test(val)) document.getElementById('tagModalBgCustom').value = val;
+        }
+
+        function updateTagColorPickerUI(bgHex) {
+            selectedColorTag = bgHex; document.getElementById('tagModalBgText').value = bgHex;
+            document.querySelectorAll('#tagColorPickerGroup .color-swatch').forEach(el => el.classList.remove('selected'));
+            document.getElementById('tagCustomColorWrapper').classList.remove('selected'); document.getElementById('tagCustomColorWrapper').style.backgroundColor = '#fff';
+
+            if (PRESET_COLORS.includes(bgHex.toLowerCase())) {
+                const targetSwatch = document.querySelector(`#tagColorPickerGroup .color-swatch[onclick*="${bgHex.toLowerCase()}"]`);
+                if(targetSwatch) targetSwatch.classList.add('selected');
+            } else {
+                document.getElementById('tagCustomColorWrapper').classList.add('selected'); document.getElementById('tagCustomColorWrapper').style.backgroundColor = bgHex;
+                if(/^#[0-9A-F]{6}$/i.test(bgHex)) document.getElementById('tagModalBgCustom').value = bgHex;
+            }
+        }
+
+        function saveTagModal() {
+            const newName = document.getElementById('tagModalName').value.trim();
+            if (!newName) return alert("名称不能为空！");
+            if(tags.some((t, i) => i !== editingTagIndex && t.name === newName)) return alert("该标签已存在！");
+
+            saveState(); 
+            if (editingTagIndex >= 0) {
+                const oldName = tags[editingTagIndex].name;
+                tags[editingTagIndex].name = newName; tags[editingTagIndex].bg = selectedColorTag;
+                entriesData.forEach(e => {
+                    if(e.tags) {
+                        const idx = e.tags.indexOf(oldName);
+                        if(idx !== -1) e.tags[idx] = newName;
+                    }
+                });
+                if(currentTag === oldName) currentTag = newName;
+            } else {
+                tags.push({ name: newName, bg: selectedColorTag }); currentTag = newName; 
+            }
+            saveTagsToLocal(); saveDataToLocal(); updateUI(); closeTagModal();
+        }
+
+        function deleteTagModal() {
+            if (confirm(`确定要删除此标签吗？\n注：已绑定该标签的话术，将自动移除此标签。`)) {
+                saveState();
+                const oldName = tags[editingTagIndex].name;
+                tags.splice(editingTagIndex, 1);
+                entriesData.forEach(e => { if(e.tags) e.tags = e.tags.filter(t => t !== oldName); });
+                if(currentTag === oldName) currentTag = null;
+                saveTagsToLocal(); saveDataToLocal(); updateUI(); closeTagModal();
+            }
+        }
+
+        // ---------- 持久化保存 ----------
+        function saveCatsToLocal() { idb.set(STORAGE_KEY_CATS, categories); }
+        function saveTagsToLocal() { idb.set(STORAGE_KEY_TAGS, tags); }
+        function saveDataToLocal() { idb.set(STORAGE_KEY_DATA, entriesData); }
+
+        // ================= 数据导入 / 导出管理 =================
+        function importFromTextarea(isAppend) {
+            const rawText = document.getElementById('dataInput').value;
+            if (!rawText.trim()) return alert("文本框为空，请输入数据！");
+            processImportText(rawText, isAppend);
+            document.getElementById('dataInput').value = ''; 
+        }
+
+        function handleFileImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const isAppend = confirm("读取成功！\n点击【确定】追加数据 (自动去重并合并配置)。\n点击【取消】完全覆盖现有数据和所有配置。");
+                if (file.name.toLowerCase().endsWith('.json')) {
+                    await processImportJSON(e.target.result, isAppend);
+                } else {
+                    processImportText(e.target.result, isAppend);
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = ''; 
+        }
+
+        function processImportText(rawText, isAppend) {
+            saveState(); 
+
+            const configRegex = /\[System_Config\]\n([\s\S]*?)\n\[\/System_Config\]/;
+            const match = rawText.match(configRegex);
+            
+            if (match) {
+                try {
+                    const config = JSON.parse(match[1]);
+                    if (!isAppend) {
+                        if (config.categories) categories = config.categories;
+                        if (config.tags) tags = config.tags;
+                    } else {
+                        if (config.categories) {
+                            config.categories.forEach(c => {
+                                const existing = categories.find(ec => ec.name === c.name);
+                                if (existing) existing.bg = c.bg; else categories.push(c);
+                            });
+                        }
+                        if (config.tags) {
+                            config.tags.forEach(t => {
+                                const existing = tags.find(et => et.name === t.name);
+                                if (existing) existing.bg = t.bg; else tags.push(t);
+                            });
+                        }
+                    }
+                } catch(e) { console.error("解析配置文件失败", e); }
+                rawText = rawText.replace(configRegex, '').trim();
+            }
+
+            let activeCat = '未分类';
+            let newParsedEntries =[];
+            let importUniqueTexts = new Set(); 
+            
+            const blocks = rawText.split(/^[ \t]*-{3,}[ \t]*$/m); 
+            
+            blocks.forEach(block => {
+                let lines = block.trim().split('\n');
+                if (lines.length === 0 || (lines.length === 1 && !lines[0])) return;
+
+                let blockTags =[];
+
+                if (lines[0].match(/^\[(.*?)\]$/) && !lines[0].startsWith('[Tags:')) {
+                    activeCat = lines.shift().match(/^\[(.*?)\]$/)[1].trim();
+                }
+                if (lines.length > 0 && lines[0].match(/^\[Tags:(.*?)\]$/)) {
+                    let tagContent = lines.shift().match(/^\[Tags:(.*?)\]$/)[1];
+                    blockTags = tagContent.split(',').map(t => t.trim()).filter(Boolean);
+                }
+
+                let text = lines.join('\n').trim();
+
+                if (!text) {
+                    if(activeCat !== '未分类' && !categories.find(c => c.name === activeCat)) categories.push({ name: activeCat, bg: '#f3f4f6' });
+                    blockTags.forEach(t => { if(!tags.find(x => x.name === t)) tags.push({ name: t, bg: '#f3f4f6' }); });
+                    return; 
+                }
+
+                if (!importUniqueTexts.has(text)) {
+                    importUniqueTexts.add(text);
+                    newParsedEntries.push({ id: Date.now()+Math.random(), category: activeCat, tags: blockTags, text: text, files:[] });
+                    if(activeCat !== '未分类' && !categories.find(c => c.name === activeCat)) categories.push({ name: activeCat, bg: '#f3f4f6' });
+                    blockTags.forEach(t => { if(!tags.find(x => x.name === t)) tags.push({ name: t, bg: '#f3f4f6' }); });
+                }
+            });
+
+            if (isAppend) {
+                const existingTexts = new Set(entriesData.map(e => e.text));
+                let added = 0;
+                newParsedEntries.forEach(item => {
+                    if (!existingTexts.has(item.text)) { entriesData.push(item); existingTexts.add(item.text); added++; }
+                });
+                alert(`✅ 成功追加导入 ${added} 条新话术！\n⚠️ 自动拦截了 ${newParsedEntries.length - added} 条重复数据。`);
+            } else {
+                entriesData = newParsedEntries;
+                alert(`✅ 成功覆盖导入 ${newParsedEntries.length} 条有效去重数据！`);
+            }
+            
+            saveCatsToLocal(); saveTagsToLocal(); saveDataToLocal(); updateUI();
+            document.getElementById('adminPanel').removeAttribute('open'); 
+        }
+
+        async function processImportJSON(jsonStr, isAppend) {
+            try {
+                const data = JSON.parse(jsonStr);
+                saveState();
+                if (!isAppend) {
+                    if(data.systemConfig) {
+                        if (data.systemConfig.categories) categories = data.systemConfig.categories;
+                        if (data.systemConfig.tags) tags = data.systemConfig.tags;
+                    }
+                } else {
+                    if(data.systemConfig) {
+                        if (data.systemConfig.categories) {
+                            data.systemConfig.categories.forEach(c => {
+                                const existing = categories.find(ec => ec.name === c.name);
+                                if (existing) existing.bg = c.bg; else categories.push(c);
+                            });
+                        }
+                        if (data.systemConfig.tags) {
+                            data.systemConfig.tags.forEach(t => {
+                                const existing = tags.find(et => et.name === t.name);
+                                if (existing) existing.bg = t.bg; else tags.push(t);
+                            });
+                        }
+                    }
+                }
+                
+                const newEntries = (data.entries ||[]).map(ent => {
+                    const files = (ent.files ||[]).map(f => {
+                        return { name: f.name, type: f.type, blob: base64ToBlob(f.base64, f.type) };
+                    });
+                    return { id: ent.id || Date.now()+Math.random(), category: ent.category || '未分类', tags: ent.tags ||[], text: ent.text, files };
+                });
+
+                if (isAppend) {
+                    const existingTexts = new Set(entriesData.map(e => e.text));
+                    let added = 0;
+                    newEntries.forEach(item => {
+                        if (!existingTexts.has(item.text) || item.files.length > 0) { 
+                            entriesData.push(item); 
+                            existingTexts.add(item.text); 
+                            added++; 
+                        }
+                    });
+                    alert(`✅ 成功追加导入 ${added} 条新话术 (含附件)！\n⚠️ 自动拦截了 ${newEntries.length - added} 条纯文本重复数据。`);
+                } else {
+                    entriesData = newEntries;
+                    alert(`✅ 成功覆盖导入 ${newEntries.length} 条数据 (含附件)！`);
+                }
+                saveCatsToLocal(); saveTagsToLocal(); saveDataToLocal(); updateUI();
+                document.getElementById('adminPanel').removeAttribute('open');
+            } catch (err) {
+                console.error(err); alert("❌ JSON 解析失败，该文件可能已损坏。");
+            }
+        }
+
+        function clearData() {
+            if(confirm("确定要清空所有话术数据吗？(分类与标签配置保留，此操作可撤销)")) {
+                saveState(); entriesData =[]; currentCategory = '全部'; currentTag = null;
+                saveDataToLocal(); updateUI();
+            }
+        }
+
+        async function exportData(isJSON) {
+            if (entriesData.length === 0 && categories.length === 0 && tags.length === 0) return alert("本地没有可导出的数据！");
+            
+            const fileNameBase = `快捷话术备份_${new Date().toISOString().slice(0,10)}`;
+
+            if (isJSON) {
+                document.getElementById('searchStats').innerText = "🔄 正在打包备份文件，请稍候...";
+                try {
+                    const serializedEntries = await Promise.all(entriesData.map(async entry => {
+                        const files = await Promise.all((entry.files ||[]).map(async f => {
+                            const base64 = await blobToBase64(f.blob || f.data);
+                            return { name: f.name, type: f.type, base64 };
+                        }));
+                        return { id: entry.id, category: entry.category, tags: entry.tags, text: entry.text, files };
+                    }));
+                    
+                    const outData = { 
+                        systemConfig: { categories: categories, tags: tags }, 
+                        entries: serializedEntries 
+                    };
+                    const blob = new Blob([JSON.stringify(outData)], { type: 'application/json' });
+                    
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `${fileNameBase}_完整备份.json`;
+                    link.click(); URL.revokeObjectURL(link.href);
+                    
+                    showToast("✅ 备份包下载成功！");
+                } catch(err) { alert("导出失败：" + err.message); }
+                document.getElementById('searchStats').innerText = `导出完毕。`;
+                renderResults();
+            } else {
+                let blocksToExport =[];
+                const configObj = { categories: categories, tags: tags };
+                const configStr = `[System_Config]\n${JSON.stringify(configObj)}\n[/System_Config]`;
+                blocksToExport.push(configStr);
+
+                const allAssignedCats = [...new Set(entriesData.map(e => e.category))];
+                
+                allAssignedCats.forEach(cat => {
+                    const items = entriesData.filter(e => e.category === cat);
+                    items.forEach((item, index) => {
+                        let blockStr = "";
+                        if (index === 0) blockStr += `[${cat}]\n`;
+                        if (item.tags && item.tags.length > 0) blockStr += `[Tags: ${item.tags.join(', ')}]\n`;
+                        blockStr += item.text;
+                        blocksToExport.push(blockStr);
+                    });
+                });
+
+                const exportStr = blocksToExport.join('\n---\n');
+                const blob = new Blob([exportStr], { type: 'text/plain;charset=utf-8' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `${fileNameBase}_纯文本.txt`;
+                link.click(); URL.revokeObjectURL(link.href);
+            }
+        }
+
+        // ================= 撤销/重做逻辑 =================
+        function saveState() {
+            undoStack.push({
+                data: structuredClone(entriesData),
+                cats: structuredClone(categories),
+                tgs: structuredClone(tags)
+            });
+            if(undoStack.length > 20) undoStack.shift();
+            redoStack =[]; updateUndoRedoButtons();
+        }
+
+        function undo() {
+            if (undoStack.length === 0) return;
+            redoStack.push({ data: structuredClone(entriesData), cats: structuredClone(categories), tgs: structuredClone(tags) });
+            const state = undoStack.pop();
+            entriesData = structuredClone(state.data); 
+            categories = structuredClone(state.cats); 
+            tags = structuredClone(state.tgs);
+            saveDataToLocal(); saveCatsToLocal(); saveTagsToLocal(); updateUI(); updateUndoRedoButtons(); showToast("已撤销");
+        }
+
+        function redo() {
+            if (redoStack.length === 0) return;
+            undoStack.push({ data: structuredClone(entriesData), cats: structuredClone(categories), tgs: structuredClone(tags) });
+            const state = redoStack.pop();
+            entriesData = structuredClone(state.data); 
+            categories = structuredClone(state.cats); 
+            tags = structuredClone(state.tgs);
+            saveDataToLocal(); saveCatsToLocal(); saveTagsToLocal(); updateUI(); updateUndoRedoButtons(); showToast("已重做");
+        }
+
+        function updateUndoRedoButtons() {
+            document.getElementById('undoBtn').disabled = undoStack.length === 0;
+            document.getElementById('redoBtn').disabled = redoStack.length === 0;
+        }
+
+        // ================= 辅助函数 =================
+        function copyToClipboard(text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(()=>showToast("✅ 文本复制成功！"));
+            } else {
+                let textArea = document.createElement("textarea"); textArea.value = text;
+                textArea.style.position = "fixed"; textArea.style.left = "-999999px";
+                document.body.appendChild(textArea); textArea.focus(); textArea.select();
+                try { document.execCommand('copy'); showToast("✅ 文本复制成功！"); } catch (err) { alert('复制失败'); }
+                textArea.remove();
+            }
+        }
+
+        function blobToBase64(blob) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        function base64ToBlob(base64Str, mimeType) {
+            const bstr = atob(base64Str.split(',')[1]);
+            let n = bstr.length;
+            const u8arr = new Uint8Array(n);
+            while(n--) { u8arr[n] = bstr.charCodeAt(n); }
+            return new Blob([u8arr], { type: mimeType });
+        }
+
+        let toastTimeout;
+        function showToast(msg, duration=1500) {
+            const toast = document.getElementById("toast"); toast.innerText = msg; toast.className = "toast show";
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => toast.className = toast.className.replace("show", ""), duration);
+        }
+
+        function escapeRegExp(string) { return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+        function escapeHTML(str) { return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag])); }
+    </script>
+</body>
 </html>
