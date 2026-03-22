@@ -1,11 +1,998 @@
 <!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>PakePlus</title>
-    </head>
-    <body>
-        Hello World
-    </body>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>网盘推广数据记录助手 v2.0 @IT豪哥</title>
+    <style>
+        :root { --theme-color: #1890ff; --theme-bg: #e6f7ff; }
+        body { font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1200px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-top: 5px solid var(--theme-color); transition: border-color 0.3s; }
+        
+        /* ================= 顶部导航与应用名称 ================= */
+        .top-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #f0f0f0; padding-bottom: 15px; }
+        .app-title { font-size: 24px; font-weight: 800; color: var(--theme-color); display: flex; align-items: baseline; gap: 8px; letter-spacing: 1px; }
+        
+        /* 升级：超链接样式 */
+        .app-version { align-self: flex-end; font-size: 15px; color: #888; font-weight: normal; letter-spacing: 0; text-decoration: none; transition: all 0.2s; cursor: pointer; }
+        .app-version:hover { color: var(--theme-color); text-decoration: underline; }
+
+        /* ================= 顶部工具与统计 ================= */
+        .global-tools { display: flex; justify-content: flex-end; gap: 10px; }
+        .btn-tool { background: #fff; border: 1px solid #d9d9d9; padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; color: #555; display: flex; align-items: center; gap: 4px; transition: all 0.2s; user-select: none; }
+        .btn-tool:hover:not(:disabled) { border-color: var(--theme-color); color: var(--theme-color); }
+        .btn-tool:disabled { background: #f5f5f5; color: #ccc; cursor: not-allowed; }
+
+        .tabs-container { display: flex; align-items: center; border-bottom: 2px solid #e8e8e8; margin-bottom: 20px; gap: 5px; flex-wrap: wrap; }
+        .tab { padding: 10px 20px; cursor: pointer; border: 1px solid transparent; border-bottom: none; border-radius: 6px 6px 0 0; font-size: 15px; background: #fafafa; color: #666; transition: all 0.2s; user-select: none; }
+        .tab.active { background: #fff; color: #333; font-weight: bold; border-color: #e8e8e8; margin-bottom: -2px; border-top: 3px solid var(--theme-color); }
+        .btn-manage-cat { margin-left: auto; font-size: 13px; color: #1890ff; cursor: pointer; padding: 10px; }
+        .btn-manage-cat:hover { text-decoration: underline; }
+
+        .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 15px; }
+        .header-bar h1 { margin: 0; font-size: 22px; color: #2c3e50; display: flex; align-items: center; gap: 15px; }
+        .global-stats { display: flex; gap: 15px; background: #fffaf0; border: 1px solid #ffd591; padding: 6px 15px; border-radius: 6px; font-size: 13px; color: #d46b08; }
+        .global-stats span.stat-val { font-size: 16px; font-weight: bold; color: #C00000; margin: 0 4px; }
+
+        /* ================= 控制台与按钮 ================= */
+        .control-panel { background: var(--theme-bg); border: 1px solid var(--theme-color); padding: 15px; border-radius: 6px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 15px; transition: all 0.3s; }
+        .control-row { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between;}
+        .prices-group { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; }
+        .control-group { display: flex; align-items: center; gap: 8px; }
+        .control-group label { font-size: 13px; font-weight: bold; color: #444; }
+        .control-group input[type="number"], .control-group input[type="month"] { width: 65px; padding: 5px; border: 1px solid #ccc; border-radius: 4px; text-align: center; font-family: inherit; }
+        .control-group input[type="month"] { width: auto; }
+        
+        .btn { padding: 7px 12px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; transition: opacity 0.2s; color: white; display: inline-flex; align-items: center; gap: 4px;}
+        .btn:hover { opacity: 0.8; }
+        .btn-danger { background-color: #ff4d4f; }
+        .btn-primary { background-color: var(--theme-color); }
+        .btn-warning { background-color: #faad14; color: #fff; }
+
+        .event-badge-container { display: flex; align-items: center; background: #fff0f6; border: 1px dashed #ff85c0; padding: 6px 12px; border-radius: 4px; font-size: 13px; color: #c41d7f; gap: 15px; }
+
+/* ================= 升级：冻结行列表格专属样式 ================= */
+        .table-responsive { 
+            /* 核心修改点：移除这里的 max-height 和 overflow 属性，改为页面级全局滚动。
+               这样在向下翻页时，控制台(control-panel)会自然地向上滚出屏幕 */
+            border-top: 1px solid #d9d9d9; 
+            border-left: 1px solid #d9d9d9;
+            border-radius: 2px;
+        }
+        table { 
+            width: 100%; 
+            border-collapse: separate; /* 必须使用 separate 才能完美支持 sticky 冻结 */
+            border-spacing: 0; 
+            font-size: 14px; 
+            text-align: center; 
+        }
+        th, td { 
+            border-bottom: 1px solid #d9d9d9; 
+            border-right: 1px solid #d9d9d9; 
+            padding: 0; 
+            height: 40px; 
+            vertical-align: middle; 
+            background-color: #fff;
+        }
+        
+        /* 表头基础 */
+        th { background-color: #f5f5f5; padding: 8px; font-weight: bold; cursor: default; user-select: none; }
+        th[data-sort] { cursor: pointer; }
+        th[data-sort]:hover { background-color: #e8e8e8; }
+        th[data-sort]::after { content: '\25BC'; font-size: 10px; color: var(--theme-color); margin-left: 5px; opacity: 0.2; display: inline-block; }
+        th.sort-asc::after { content: '\25B2'; opacity: 1; }
+        th.sort-desc::after { content: '\25BC'; opacity: 1; }
+        
+        /* 冻结顶部的汇总行 (Z-index: 20)，页面向下滚动时吸顶 */
+        .summary-row th { 
+            position: sticky; top: 0; z-index: 20; 
+            height: 44px; box-sizing: border-box;
+            background-color: #fffbe6; color: #d46b08; 
+            font-size: 15px; font-weight: bold; padding: 10px 8px; 
+            border-bottom: 2px solid #ffd591; 
+        }
+        .summary-row th:first-child { color: #333; }
+
+        /* 冻结顶部的常规表头行 (Z-index: 19)，紧贴汇总行吸顶 */
+        .header-row th {
+            position: sticky; top: 44px; z-index: 19; 
+            height: 40px; box-sizing: border-box;
+            background-color: #f5f5f5;
+        }
+
+        /* 冻结左侧的日期列 (Z-index: 10)，向右滚动时吸左 */
+        .sticky-col { 
+            position: sticky; left: 0; z-index: 10; 
+            background-color: #fafafa; font-weight: bold; 
+        }
+        
+        /* 左上角交叉点 (最高 Z-index) 保证滑动时不被其他单元格覆盖 */
+        .summary-row .sticky-col { z-index: 25; background-color: #fffbe6; }
+        .header-row .sticky-col { z-index: 24; background-color: #f5f5f5; }
+
+        .cell-input { width: 100%; height: 100%; box-sizing: border-box; border: 2px solid transparent; background: transparent; text-align: center; font-size: 15px; font-family: 'Times New Roman', sans-serif; color: #000; outline: none; transition: border 0.1s; margin: 0; border-radius: 0; }
+        .cell-input:focus { border: 2px solid var(--theme-color); background-color: #fff; z-index: 5; position: relative; }
+        
+        .readonly { color: #555; padding: 0 8px; }
+        .red-bold { color: #C00000; font-weight: bold; background-color: #fffaf0; }
+        
+        /* 活动高亮行 */
+        .event-row td { background-color: #fff0f6; }
+        .event-row td.readonly { background-color: #ffe6f0; }
+        .event-row td.sticky-col { background-color: #ffe6f0; } /* 日期冻结列同步高亮 */
+        
+        .action-link { color: #ff4d4f; cursor: pointer; font-size: 13px; text-decoration: none; }
+        .action-link:hover { text-decoration: underline; }
+
+        /* ================= 模态弹窗 ================= */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: #fff; width: 500px; border-radius: 8px; padding: 20px; box-shadow: 0 5px 20px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto;}
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .modal-header h3 { margin: 0; font-size: 18px; }
+        .close-btn { cursor: pointer; font-size: 20px; color: #888; }
+        
+        .vis-item { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 14px; }
+        .vis-item input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+
+        .cat-item { background: #fafafa; border: 1px solid #e8e8e8; border-radius: 6px; padding: 12px; margin-bottom: 15px; }
+        .cat-row-top { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+        .cat-row-top input[type="text"] { flex: 1; padding: 6px; border: 1px solid #ccc; border-radius: 4px; }
+        .cat-defaults { display: flex; flex-wrap: wrap; gap: 15px; font-size: 13px; color: #555; align-items: center; }
+        .cat-defaults input { width: 70px; padding: 4px; border: 1px solid #ccc; border-radius: 4px; text-align: center; }
+
+        .app-title {
+            display: flex;
+            align-items: center;   /* 垂直居中关键 */
+        }
+
+        .app-logo {
+            width: 32px;
+            height: 32px;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="top-nav">
+        <!-- 升级：左上角标题与超链接版本小字 -->
+        <div class="app-title"><img src="logo.png" alt="快捷回复助手 Logo" class="app-logo" onerror="this.style.display='none'">
+            网盘推广数据记录助手 
+            <a href="https://www.ithaoge.cn" target="_blank" title="IT豪哥-电脑教程网" class="app-version">v2.0 @IT豪哥</a>
+        </div>
+        <div class="global-tools">
+            <button class="btn-tool" id="btnUndo" onclick="undo()" disabled>↩️ 撤销</button>
+            <button class="btn-tool" id="btnRedo" onclick="redo()" disabled>↪️ 恢复</button>
+            <span style="border-left: 1px solid #eee; margin: 0 5px;"></span>
+            <button class="btn-tool" onclick="exportData()">⬇️ 导出备份</button>
+            <button class="btn-tool" onclick="document.getElementById('importFile').click()">⬆️ 导入恢复</button>
+            <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importData(event)">
+        </div>
+    </div>
+
+    <div class="tabs-container" id="tabsContainer">
+        <span class="btn-manage-cat" onclick="openCatModal()">⚙️ 网盘配置(新增/删除)</span>
+    </div>
+
+    <div class="header-bar">
+        <h1>
+            📈 <span id="currentCatTitle"></span>
+            <div class="global-stats">
+                <div>本年收益:<span class="stat-val" id="yearlyRevenue">0.00</span></div>
+                <div>历史总计:<span class="stat-val" id="allTimeRevenue">0.00</span></div>
+            </div>
+        </h1>
+        <div class="control-group">
+            <label>📅 月份:</label>
+            <button class="btn-tool" style="padding: 4px 8px;" onclick="changeMonth(-1)">◀</button>
+            <input type="month" id="monthSelector">
+            <button class="btn-tool" style="padding: 4px 8px;" onclick="changeMonth(1)">▶</button>
+        </div>
+    </div>
+
+    <!-- 核心控制区 -->
+    <div class="control-panel">
+        <div class="control-row">
+            <div class="prices-group" id="regularPricesGroup">
+                <!-- 由JS动态渲染价格输入框（基于可见性） -->
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn btn-warning" onclick="openEventModal()">🎉 管理活动期单价</button>
+                <button class="btn-tool" onclick="openVisModal()">👁️ 隐藏/显示栏目</button>
+            </div>
+        </div>
+        
+        <div id="eventBanner" class="event-badge-container" style="display: none;">
+            <!-- 由JS动态渲染活动信息 -->
+        </div>
+
+        <div class="control-row" style="justify-content: flex-end;">
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-tool" style="font-size: 12px; margin-right: 15px;" onclick="resetMonthPrices()">🔄 恢复网盘默认单价</button>
+                <button class="btn btn-primary" onclick="copyRowData()">📋 横向复制收益(至Excel)</button>
+                <button class="btn btn-danger" onclick="clearCurrentMonth()">🗑️ 清空当月</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 数据表格 -->
+    <div class="table-responsive">
+        <table id="dataTable">
+            <thead id="tableHead">
+                <!-- 动态生成 -->
+            </thead>
+            <tbody id="tableBody">
+                <!-- 动态生成 -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 1. 网盘分类与默认全局单价弹窗 -->
+<div class="modal-overlay" id="catModal">
+    <div class="modal-content" style="width: 600px;">
+        <div class="modal-header"><h3>⚙️ 管理网盘分类与默认全局单价</h3><span class="close-btn" onclick="closeModal('catModal')">&times;</span></div>
+        <div id="catList" style="display: flex; flex-direction: column;"></div>
+        <button class="btn-tool" style="margin-top: 5px;" onclick="addCategory()">+ 新增分类</button>
+        <div style="margin-top: 20px; text-align: right; border-top: 1px solid #eee; padding-top: 15px;">
+            <button class="btn btn-primary" onclick="saveCategories()">保存配置</button>
+        </div>
+    </div>
+</div>
+
+<!-- 2. 列可见性设置弹窗 -->
+<div class="modal-overlay" id="visModal">
+    <div class="modal-content" style="width: 380px;">
+        <div class="modal-header"><h3>👁️ 隐藏/显示栏目</h3><span class="close-btn" onclick="closeModal('visModal')">&times;</span></div>
+        <div style="margin-bottom: 15px; color: #666; font-size: 13px;">请勾选需要在表格中展示的数据项：</div>
+        
+        <div class="vis-item" style="padding-bottom: 8px; border-bottom: 1px dashed #eee; margin-bottom: 12px;">
+            <input type="checkbox" id="vis_weekday"> <label for="vis_weekday" style="color: var(--theme-color); font-weight: bold;">日期列显示周几</label>
+        </div>
+        
+        <div class="vis-item"><input type="checkbox" id="vis_mobile"> <label for="vis_mobile">移动拉新</label></div>
+        <div class="vis-item"><input type="checkbox" id="vis_pc"> <label for="vis_pc">PC拉新</label></div>
+        <div class="vis-item"><input type="checkbox" id="vis_mobileSaves"> <label for="vis_mobileSaves">移动转存数</label></div>
+        <div class="vis-item"><input type="checkbox" id="vis_pcSaves"> <label for="vis_pcSaves">PC转存数</label></div>
+        <div class="vis-item"><input type="checkbox" id="vis_share"> <label for="vis_share">会员分成</label></div>
+        
+        <div style="margin-top: 25px; display: flex; justify-content: space-between; border-top: 1px solid #eee; padding-top: 15px;">
+            <button class="btn-tool" onclick="saveVisibility(false)" style="color: var(--theme-color); border-color: var(--theme-color);">仅应用于本月</button>
+            <button class="btn btn-primary" onclick="saveVisibility(true)">设为该网盘默认显示</button>
+        </div>
+    </div>
+</div>
+
+<!-- 3. 全局多段活动弹窗 (支持跨月设定) -->
+<div class="modal-overlay" id="eventModal">
+    <div class="modal-content" style="width: 650px;">
+        <div class="modal-header"><h3>🎉 管理网盘活动期 (支持跨月/多段)</h3><span class="close-btn" onclick="closeModal('eventModal')">&times;</span></div>
+        <div style="margin-bottom: 15px; font-size: 13px; color: #c41d7f; background:#fff0f6; padding:8px; border-radius:4px;">
+            设定后，处于活动日期范围内的记录将自动使用活动单价。支持跨月。注意：同一网盘的活动日期不能相互重叠。
+        </div>
+        <div id="eventList" style="max-height: 400px; overflow-y: auto; padding-right: 5px;"></div>
+        <button class="btn-tool" style="margin-top: 5px;" onclick="addTempEvent()">+ 新增活动期</button>
+        <div style="margin-top: 20px; display: flex; justify-content: flex-end; border-top: 1px solid #eee; padding-top: 15px;">
+            <button class="btn btn-primary" onclick="saveEvents()">保存活动配置</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    /* ================= 核心状态与迁移 ================= */
+    let globalState = {
+        categories:[
+            { id: 'cat_1', name: '夸克网盘', color: '#1890ff', 
+              defaultPrices: { mobile: 7, pc: 3, mobileSaves: 0.3, pcSaves: 0.1 },
+              visibleCols: { mobile: true, pc: true, mobileSaves: true, pcSaves: true, share: true, weekday: true } }
+        ],
+        currentCatId: 'cat_1',
+        gridData: { 'cat_1': {} },   
+        prices: { 'cat_1': {} },
+        events: { 'cat_1':[] } 
+    };
+
+    let currentMonth = "";
+    let currentSort = { key: 'dateStr', order: 'asc' }; 
+    let undoStack =[], redoStack =[];
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadAndMigrateData();
+        initMonth();
+        bindEvents();
+        recordHistory(); 
+        renderApp();
+    });
+
+    function loadAndMigrateData() {
+        let savedState = localStorage.getItem('wangpanV7') || localStorage.getItem('wangpanV6');
+        if (savedState) {
+            globalState = JSON.parse(savedState);
+            
+            // 兼容旧版散落的单月活动合并
+            if (!globalState.events) globalState.events = {};
+            globalState.categories.forEach(cat => {
+                if (!globalState.events[cat.id]) globalState.events[cat.id] =[];
+            });
+
+            Object.keys(globalState.prices).forEach(catId => {
+                if (!globalState.events[catId]) globalState.events[catId] =[];
+                Object.keys(globalState.prices[catId]).forEach(month => {
+                    let p = globalState.prices[catId][month];
+                    if (p.event && p.event.active) {
+                        globalState.events[catId].push({
+                            id: 'ev_' + Date.now() + Math.random(),
+                            start: p.event.start, end: p.event.end,
+                            prices: { ...p.event.prices }
+                        });
+                        delete p.event;
+                    }
+                });
+            });
+        }
+        saveState();
+    }
+    
+    function saveState() { localStorage.setItem('wangpanV7', JSON.stringify(globalState)); }
+
+    /* ================= 撤销与恢复 ================= */
+    function recordHistory() {
+        const stateStr = JSON.stringify(globalState);
+        if (undoStack.length === 0 || undoStack[undoStack.length - 1] !== stateStr) {
+            undoStack.push(stateStr);
+            if (undoStack.length > 30) undoStack.shift(); 
+        }
+        redoStack =[]; 
+        updateUndoRedoUI();
+    }
+
+    function undo() {
+        if (undoStack.length > 0) {
+            redoStack.push(JSON.stringify(globalState)); 
+            globalState = JSON.parse(undoStack.pop());
+            saveState(); renderApp(); updateUndoRedoUI();
+        }
+    }
+    function redo() {
+        if (redoStack.length > 0) {
+            undoStack.push(JSON.stringify(globalState));
+            globalState = JSON.parse(redoStack.pop());
+            saveState(); renderApp(); updateUndoRedoUI();
+        }
+    }
+    function updateUndoRedoUI() {
+        document.getElementById('btnUndo').disabled = undoStack.length === 0;
+        document.getElementById('btnRedo').disabled = redoStack.length === 0;
+    }
+
+    /* ================= 基础渲染 ================= */
+    function renderApp() {
+        applyTheme();
+        renderTabs();
+        renderControlPanel();
+        renderTable();
+    }
+
+    function applyTheme() {
+        const cat = globalState.categories.find(c => c.id === globalState.currentCatId);
+        if (cat) {
+            const root = document.documentElement;
+            root.style.setProperty('--theme-color', cat.color);
+            root.style.setProperty('--theme-bg', cat.color + '1A'); 
+            document.getElementById('currentCatTitle').innerText = cat.name;
+        }
+    }
+
+    function renderTabs() {
+        const container = document.getElementById('tabsContainer');
+        Array.from(container.children).forEach(child => { if (child.className.includes('tab')) child.remove(); });
+
+        globalState.categories.forEach(cat => {
+            const div = document.createElement('div');
+            div.className = `tab ${cat.id === globalState.currentCatId ? 'active' : ''}`;
+            div.innerText = cat.name;
+            div.onclick = () => { if(globalState.currentCatId !== cat.id) { globalState.currentCatId = cat.id; saveState(); renderApp(); } };
+            container.insertBefore(div, container.lastElementChild);
+        });
+    }
+
+    /* ================= 月份与单价判定核心逻辑 ================= */
+    function initMonth() {
+        const today = new Date();
+        currentMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+        document.getElementById('monthSelector').value = currentMonth;
+    }
+
+    function changeMonth(offset) {
+        let [year, month] = currentMonth.split('-').map(Number);
+        month += offset;
+        if (month < 1) { month = 12; year--; }
+        if (month > 12) { month = 1; year++; }
+        currentMonth = `${year}-${String(month).padStart(2, '0')}`;
+        document.getElementById('monthSelector').value = currentMonth;
+        renderApp();
+    }
+
+    function getVisibleCols() {
+        const catId = globalState.currentCatId;
+        const cat = globalState.categories.find(c => c.id === catId);
+        const monthCfg = globalState.prices[catId][currentMonth] || {};
+        return monthCfg.visibleCols || cat.visibleCols || { mobile: true, pc: true, mobileSaves: true, pcSaves: true, share: true, weekday: true };
+    }
+
+    function getPricesForDate(dateStr) {
+        const catId = globalState.currentCatId;
+        const cat = globalState.categories.find(c => c.id === catId);
+        const monthStr = dateStr.substring(0, 7);
+        const p = globalState.prices[catId][monthStr] || {};
+        const def = cat.defaultPrices;
+        
+        let base = {
+            mobile: p.mobile !== undefined ? p.mobile : def.mobile,
+            pc: p.pc !== undefined ? p.pc : def.pc,
+            mobileSaves: p.mobileSaves !== undefined ? p.mobileSaves : def.mobileSaves,
+            pcSaves: p.pcSaves !== undefined ? p.pcSaves : def.pcSaves
+        };
+
+        const catEvents = globalState.events[catId] ||[];
+        const activeEvent = catEvents.find(ev => dateStr >= ev.start && dateStr <= ev.end);
+        if (activeEvent) return activeEvent.prices; 
+
+        return base;
+    }
+
+    function renderControlPanel() {
+        const catId = globalState.currentCatId;
+        const cat = globalState.categories.find(c => c.id === catId);
+        const p = globalState.prices[catId][currentMonth] || {};
+        const def = cat.defaultPrices;
+        const vis = getVisibleCols();
+
+        const group = document.getElementById('regularPricesGroup');
+        group.innerHTML = '';
+        const priceConfig =[
+            { key: 'mobile', label: '移动拉新(元)', step: '0.1' },
+            { key: 'pc', label: 'PC拉新(元)', step: '0.1' },
+            { key: 'mobileSaves', label: '移动转存(元)', step: '0.01' },
+            { key: 'pcSaves', label: 'PC转存(元)', step: '0.01' }
+        ];
+
+        priceConfig.forEach(item => {
+            if (vis[item.key]) {
+                const val = p[item.key] !== undefined ? p[item.key] : def[item.key];
+                group.innerHTML += `
+                    <div class="control-group">
+                        <label>${item.label}:</label>
+                        <input type="number" step="${item.step}" id="price_${item.key}" value="${val}" onchange="saveBasicMonthPrices()">
+                    </div>`;
+            }
+        });
+
+        const banner = document.getElementById('eventBanner');
+        const catEvents = globalState.events[catId] ||[];
+        const monthStart = `${currentMonth}-01`;
+        const daysInMonth = new Date(currentMonth.split('-')[0], currentMonth.split('-')[1], 0).getDate();
+        const monthEnd = `${currentMonth}-${String(daysInMonth).padStart(2, '0')}`;
+        
+        const activeEventsThisMonth = catEvents.filter(ev => ev.start <= monthEnd && ev.end >= monthStart);
+
+        if (activeEventsThisMonth.length > 0) {
+            banner.style.display = 'flex';
+            let evInfo = activeEventsThisMonth.map(ev => `[${ev.start.substring(5)} 至 ${ev.end.substring(5)}]`).join(', ');
+            banner.innerHTML = `
+                <strong style="font-size:14px;">🔥 本月涉及活动期: ${evInfo}</strong>
+                <span style="color:#888; font-size: 12px;">(横跨活动日的表格行将自动按活动价计算)</span>
+                <span class="action-link" style="margin-left:auto;" onclick="openEventModal()">✎ 管理活动</span>
+            `;
+        } else {
+            banner.style.display = 'none';
+        }
+    }
+
+    function saveBasicMonthPrices() {
+        recordHistory();
+        const catId = globalState.currentCatId;
+        if (!globalState.prices[catId][currentMonth]) globalState.prices[catId][currentMonth] = {};['mobile', 'pc', 'mobileSaves', 'pcSaves'].forEach(key => {
+            const el = document.getElementById(`price_${key}`);
+            if (el) globalState.prices[catId][currentMonth][key] = parseFloat(el.value) || 0;
+        });
+        saveState(); recalculateAll();
+    }
+
+    function resetMonthPrices() {
+        if(confirm('确定要清除本月的常规特殊价格配置，恢复为网盘的默认价格吗？\n(注意：这不会影响已配置的活动期)')) {
+            recordHistory();
+            const catId = globalState.currentCatId;
+            if(globalState.prices[catId][currentMonth]) {['mobile', 'pc', 'mobileSaves', 'pcSaves'].forEach(k => delete globalState.prices[catId][currentMonth][k]); }
+            saveState(); renderApp(); recalculateAll();
+        }
+    }
+
+    /* ================= 升级：带冻结机制的动态表格渲染 ================= */
+    const colDefs =[
+        { key: 'mobile', title: '移动拉新' },
+        { key: 'pc', title: 'PC拉新' },
+        { key: 'mobileSaves', title: '移动转存数' },
+        { key: 'pcSaves', title: 'PC转存数' },
+        { key: 'share', title: '会员分成', step: '0.01' }
+    ];
+
+    function renderTable() {
+        const thead = document.getElementById('tableHead');
+        const tbody = document.getElementById('tableBody');
+        const vis = getVisibleCols();
+        
+        // 生成支持双层 Sticky 冻结的表头 (行1：汇总，行2：列名)
+        let sumHtml = `<tr class="summary-row" id="summaryRow"><th class="sticky-col">本月汇总</th>`;
+        let headHtml = `<tr class="header-row"><th data-sort="dateStr" class="sticky-col" style="width: 135px;">日期</th>`;
+        
+        colDefs.forEach(col => {
+            if (vis[col.key]) {
+                sumHtml += `<th id="sum_${col.key}">0</th>`;
+                headHtml += `<th data-sort="${col.key}">${col.title}</th>`;
+            }
+        });
+        sumHtml += `<th id="sum_total" style="color:#C00000;">0.00</th><th>-</th></tr>`;
+        headHtml += `<th data-sort="total" style="width: 100px;">当日收益</th><th style="width: 50px;">操作</th></tr>`;
+        
+        thead.innerHTML = sumHtml + headHtml;
+
+        document.querySelectorAll('th[data-sort]').forEach(th => th.className = (th.dataset.sort === 'dateStr' ? 'sticky-col ' : ''));
+        const activeSortTh = document.querySelector(`th[data-sort="${currentSort.key}"]`);
+        if (activeSortTh) activeSortTh.classList.add(`sort-${currentSort.order}`);
+
+        const catId = globalState.currentCatId;
+        const[year, month] = currentMonth.split('-');
+        const daysInMonth = new Date(year, month, 0).getDate();
+        if (!globalState.gridData[catId]) globalState.gridData[catId] = {};
+
+        const catEvents = globalState.events[catId] ||[];
+        let monthData =[];
+        const weekdays =['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+
+        for (let i = 1; i <= daysInMonth; i++) {
+            const dateStr = `${currentMonth}-${String(i).padStart(2, '0')}`;
+            const rowData = globalState.gridData[catId][dateStr] || { mobile: "", pc: "", mobileSaves: "", pcSaves: "", share: "" };
+            
+            const isEvent = catEvents.some(ev => dateStr >= ev.start && dateStr <= ev.end);
+            const prices = getPricesForDate(dateStr);
+            
+            const total = ((parseFloat(rowData.mobile)||0) * prices.mobile) + 
+                          ((parseFloat(rowData.pc)||0) * prices.pc) + 
+                          ((parseFloat(rowData.mobileSaves)||0) * prices.mobileSaves) + 
+                          ((parseFloat(rowData.pcSaves)||0) * prices.pcSaves) + 
+                          (parseFloat(rowData.share)||0);
+
+            const jsDate = new Date(year, month - 1, i);
+            let displayDate = `${year}/${parseInt(month)}/${i}`;
+            if (vis.weekday !== false) {
+                displayDate += ` <span style="font-size: 12px; color: #888;">${weekdays[jsDate.getDay()]}</span>`;
+            }
+
+            monthData.push({ dateStr, displayDate, data: rowData, total, isEvent });
+        }
+
+        monthData.sort((a, b) => {
+            let valA = currentSort.key === 'dateStr' || currentSort.key === 'total' ? a[currentSort.key] : a.data[currentSort.key];
+            let valB = currentSort.key === 'dateStr' || currentSort.key === 'total' ? b[currentSort.key] : b.data[currentSort.key];
+            if(valA === "") valA = 0; if(valB === "") valB = 0;
+            if (valA < valB) return currentSort.order === 'asc' ? -1 : 1;
+            if (valA > valB) return currentSort.order === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        tbody.innerHTML = '';
+        monthData.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.id = `row-${row.dateStr}`;
+            if (row.isEvent) tr.classList.add('event-row'); 
+            
+            let dateDisplay = row.displayDate;
+            if (row.isEvent) dateDisplay += ' <span title="处于活动期内，应用活动高价" style="font-size:12px; cursor:help;">🔥</span>';
+
+            // 首列绑定 sticky-col
+            let cellsHtml = `<td class="readonly sticky-col">${dateDisplay}</td>`;
+            colDefs.forEach(col => {
+                if (vis[col.key]) {
+                    const step = col.step || '1';
+                    cellsHtml += `<td><input type="number" step="${step}" class="cell-input" data-date="${row.dateStr}" data-field="${col.key}" value="${row.data[col.key]}"></td>`;
+                }
+            });
+            cellsHtml += `<td class="readonly red-bold" id="total-${row.dateStr}">${row.total > 0 ? row.total.toFixed(2) : ""}</td>
+                          <td><span class="action-link" onclick="clearDay('${row.dateStr}')">清空</span></td>`;
+            tr.innerHTML = cellsHtml;
+            tbody.appendChild(tr);
+        });
+
+        updateSummaryDOM();
+    }
+
+    /* ================= 事件绑定与计算 ================= */
+    function bindEvents() {
+        document.getElementById('monthSelector').addEventListener('change', (e) => { currentMonth = e.target.value; renderApp(); });
+
+        document.getElementById('tableHead').addEventListener('click', (e) => {
+            const th = e.target.closest('th[data-sort]');
+            if (!th) return;
+            const sortKey = th.dataset.sort;
+            if (currentSort.key === sortKey) currentSort.order = currentSort.order === 'asc' ? 'desc' : 'asc';
+            else { currentSort.key = sortKey; currentSort.order = 'asc'; }
+            renderTable(); 
+        });
+
+        const tableBody = document.getElementById('tableBody');
+        tableBody.addEventListener('input', (e) => {
+            if (e.target.classList.contains('cell-input')) updateDataFromInput(e.target);
+        });
+        tableBody.addEventListener('focusin', (e) => { if (e.target.classList.contains('cell-input')) recordHistory(); });
+        tableBody.addEventListener('change', (e) => { if (e.target.classList.contains('cell-input')) saveState(); });
+
+        tableBody.addEventListener('keydown', (e) => {
+            const currentInput = e.target;
+            if(!currentInput.classList.contains('cell-input')) return;
+
+            if (e.key === 'Delete') {
+                e.preventDefault(); currentInput.value = ''; updateDataFromInput(currentInput); saveState();
+            }
+            if (e.key === 'Enter') {
+                e.preventDefault(); 
+                const cellIndex = Array.from(currentInput.closest('tr').children).indexOf(currentInput.closest('td'));
+                const nextTr = currentInput.closest('tr').nextElementSibling;
+                if (nextTr) { const nextInput = nextTr.children[cellIndex].querySelector('input'); if (nextInput) { nextInput.focus(); nextInput.select(); } }
+            }
+        });
+
+        tableBody.addEventListener('paste', (e) => {
+            const target = e.target;
+            if (!target.classList.contains('cell-input')) return;
+            e.preventDefault();
+            const text = (e.clipboardData || window.clipboardData).getData('text');
+            if (!text) return;
+
+            recordHistory(); 
+            const rows = text.split(/\r\n|\n|\r/);
+            const startColIndex = Array.from(target.closest('tr').children).indexOf(target.closest('td'));
+
+            let currentTr = target.closest('tr');
+            for (let r = 0; r < rows.length; r++) {
+                if (!currentTr) break; 
+                const cells = rows[r].split('\t');
+                if (cells.length === 1 && cells[0].trim() === '') continue; 
+
+                for (let c = 0; c < cells.length; c++) {
+                    const targetTd = currentTr.children[startColIndex + c];
+                    if (!targetTd) continue; 
+                    const input = targetTd.querySelector('.cell-input');
+                    if (input) {
+                        let val = parseFloat(cells[c].trim().replace(/,/g, ''));
+                        input.value = isNaN(val) ? "" : val;
+                        updateDataFromInput(input, true); 
+                    }
+                }
+                updateRowTotalDOM(currentTr.id.replace('row-', ''));
+                currentTr = currentTr.nextElementSibling;
+            }
+            updateSummaryDOM(); saveState();
+        });
+    }
+
+    function updateDataFromInput(inputEl, skipDomUpdate = false) {
+        const date = inputEl.dataset.date, field = inputEl.dataset.field;
+        let val = parseFloat(inputEl.value);
+        if (isNaN(val)) val = ""; 
+
+        const catId = globalState.currentCatId;
+        if (!globalState.gridData[catId][date]) globalState.gridData[catId][date] = { mobile: "", pc: "", mobileSaves: "", pcSaves: "", share: "" };
+        globalState.gridData[catId][date][field] = val;
+        
+        if (!skipDomUpdate) { updateRowTotalDOM(date); updateSummaryDOM(); }
+    }
+
+    function updateRowTotalDOM(date) {
+        const tr = document.getElementById(`row-${date}`);
+        if (!tr) return;
+        const m = parseFloat(tr.querySelector('[data-field="mobile"]')?.value) || 0;
+        const p = parseFloat(tr.querySelector('[data-field="pc"]')?.value) || 0;
+        const ms = parseFloat(tr.querySelector('[data-field="mobileSaves"]')?.value) || 0;
+        const ps = parseFloat(tr.querySelector('[data-field="pcSaves"]')?.value) || 0;
+        const sh = parseFloat(tr.querySelector('[data-field="share"]')?.value) || 0;
+
+        const prices = getPricesForDate(date);
+        const total = (m * prices.mobile) + (p * prices.pc) + (ms * prices.mobileSaves) + (ps * prices.pcSaves) + sh;
+        tr.querySelector(`#total-${date}`).innerText = total > 0 ? total.toFixed(2) : ""; 
+    }
+
+    function updateSummaryDOM() {
+        let sums = { mobile: 0, pc: 0, mobileSaves: 0, pcSaves: 0, share: 0, total: 0 };
+        const rows = document.querySelectorAll('#tableBody tr');
+        
+        rows.forEach(tr => {
+            const date = tr.id.replace('row-', '');
+            const m = parseFloat(tr.querySelector('[data-field="mobile"]')?.value) || 0;
+            const p = parseFloat(tr.querySelector('[data-field="pc"]')?.value) || 0;
+            const ms = parseFloat(tr.querySelector('[data-field="mobileSaves"]')?.value) || 0;
+            const ps = parseFloat(tr.querySelector('[data-field="pcSaves"]')?.value) || 0;
+            const sh = parseFloat(tr.querySelector('[data-field="share"]')?.value) || 0;
+            
+            const prices = getPricesForDate(date);
+            sums.mobile += m; sums.pc += p; sums.mobileSaves += ms; sums.pcSaves += ps; sums.share += sh;
+            sums.total += (m * prices.mobile) + (p * prices.pc) + (ms * prices.mobileSaves) + (ps * prices.pcSaves) + sh;
+        });
+
+        const vis = getVisibleCols();
+        colDefs.forEach(col => {
+            const el = document.getElementById(`sum_${col.key}`);
+            if (el) el.innerText = col.key === 'share' ? sums[col.key].toFixed(2) : sums[col.key];
+        });
+        document.getElementById('sum_total').innerText = sums.total.toFixed(2);
+
+        let yearlyTotal = 0, allTimeTotal = 0;
+        const catId = globalState.currentCatId;
+        const currentYear = currentMonth.split('-')[0];
+        const allData = globalState.gridData[catId] || {};
+
+        Object.keys(allData).forEach(dateStr => {
+            const m = parseFloat(allData[dateStr].mobile) || 0;
+            const pc = parseFloat(allData[dateStr].pc) || 0;
+            const ms = parseFloat(allData[dateStr].mobileSaves) || 0;
+            const ps = parseFloat(allData[dateStr].pcSaves) || 0;
+            const sh = parseFloat(allData[dateStr].share) || 0;
+
+            const prices = getPricesForDate(dateStr); 
+            const dailyTotal = (m * prices.mobile) + (pc * prices.pc) + (ms * prices.mobileSaves) + (ps * prices.pcSaves) + sh;
+            
+            allTimeTotal += dailyTotal;
+            if (dateStr.startsWith(currentYear)) yearlyTotal += dailyTotal;
+        });
+
+        document.getElementById('yearlyRevenue').innerText = yearlyTotal.toFixed(2);
+        document.getElementById('allTimeRevenue').innerText = allTimeTotal.toFixed(2);
+    }
+
+    function recalculateAll() {
+        const rows = document.querySelectorAll('#tableBody tr');
+        rows.forEach(tr => { updateRowTotalDOM(tr.id.replace('row-', '')); });
+        updateSummaryDOM();
+    }
+
+    /* ================= 辅助/升级后的导出导入 ================= */
+    window.clearCurrentMonth = function() {
+        recordHistory();
+        const catId = globalState.currentCatId;
+        Object.keys(globalState.gridData[catId]).forEach(key => { if(key.startsWith(currentMonth)) delete globalState.gridData[catId][key]; });
+        saveState(); renderTable();
+    };
+
+    window.clearDay = function(date) {
+        recordHistory(); delete globalState.gridData[globalState.currentCatId][date]; saveState();
+        const tr = document.getElementById(`row-${date}`);
+        if(tr) { tr.querySelectorAll('input').forEach(input => input.value = ''); updateRowTotalDOM(date); updateSummaryDOM(); }
+    };
+
+    window.copyRowData = function() {
+        const catId = globalState.currentCatId;
+        const daysInMonth = new Date(currentMonth.split('-')[0], currentMonth.split('-')[1], 0).getDate();
+        let copyArr =[];
+        for (let i = 1; i <= daysInMonth; i++) {
+            const dateStr = `${currentMonth}-${String(i).padStart(2, '0')}`;
+            const rowData = globalState.gridData[catId][dateStr];
+            if (rowData) {
+                const prices = getPricesForDate(dateStr);
+                const total = ((parseFloat(rowData.mobile)||0) * prices.mobile) + ((parseFloat(rowData.pc)||0) * prices.pc) + 
+                              ((parseFloat(rowData.mobileSaves)||0) * prices.mobileSaves) + ((parseFloat(rowData.pcSaves)||0) * prices.pcSaves) + (parseFloat(rowData.share)||0);
+                copyArr.push(total > 0 ? total.toFixed(2) : ""); 
+            } else { copyArr.push(""); }
+        }
+        navigator.clipboard.writeText(copyArr.join('\t')).then(() => alert(`已复制 ${copyArr.length} 天收益！`));
+    };
+
+    // 核心突破：Pake/WebView2完美兼容保存方案
+    window.exportData = async function() {
+        const dataStr = JSON.stringify(globalState, null, 2);
+        
+        // 生成精确到秒的时间戳文件名
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, '0');
+        const dateStr = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+        const filename = `网盘推广数据备份_${dateStr}.json`;
+
+        // 优先使用现代 File System Access API (完美兼容 Pake Windows 桌面端沙盒)
+        if (window.showSaveFilePicker) {
+            try {
+                const handle = await window.showSaveFilePicker({
+                    suggestedName: filename,
+                    types:[{ description: 'JSON 数据备份', accept: {'application/json': ['.json']} }]
+                });
+                const writable = await handle.createWritable();
+                await writable.write(dataStr);
+                await writable.close();
+                alert('导出备份成功！');
+                return;
+            } catch (err) {
+                // 如果用户主动取消，则不抛出异常，否则降级使用传统方法
+                if (err.name === 'AbortError') return; 
+                console.warn('原生保存流被拦截，回退传统下载模式:', err);
+            }
+        }
+
+        // 传统 Web 下载方案作为备用兜底
+        try {
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            // 延长销毁时间，确保桌面打包工具能够成功捕获流
+            setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 1500);
+        } catch (err) {
+            alert('导出发生异常：' + err.message);
+        }
+    };
+
+    window.importData = function(e) {
+        const file = e.target.files[0]; 
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            try {
+                const parsed = JSON.parse(evt.target.result);
+                if (!parsed || !parsed.categories) throw new Error("数据结构非法");
+                recordHistory(); globalState = parsed; saveState(); renderApp(); 
+                alert('数据导入恢复成功！');
+            } catch (err) { 
+                alert('解析失败，请确保导入的是本软件生成的JSON备份文件！\n' + err.message); 
+            }
+        };
+        reader.readAsText(file); 
+        e.target.value = ''; 
+    };
+
+    /* ================= 各种弹窗逻辑 ================= */
+    window.closeModal = function(id) { document.getElementById(id).style.display = 'none'; };
+
+    window.openVisModal = function() {
+        const vis = getVisibleCols();['mobile', 'pc', 'mobileSaves', 'pcSaves', 'share', 'weekday'].forEach(k => {
+            const el = document.getElementById('vis_' + k);
+            if (el) el.checked = vis[k] !== false; 
+        });
+        document.getElementById('visModal').style.display = 'flex';
+    };
+
+    window.saveVisibility = function(isGlobal) {
+        recordHistory();
+        const catId = globalState.currentCatId;
+        const newVis = {};['mobile', 'pc', 'mobileSaves', 'pcSaves', 'share', 'weekday'].forEach(k => {
+            const el = document.getElementById('vis_' + k);
+            if (el) newVis[k] = el.checked;
+        });
+        
+        if (isGlobal) {
+            globalState.categories.find(c => c.id === catId).visibleCols = newVis;
+            if(globalState.prices[catId][currentMonth]) delete globalState.prices[catId][currentMonth].visibleCols;
+        } else {
+            if (!globalState.prices[catId][currentMonth]) globalState.prices[catId][currentMonth] = {};
+            globalState.prices[catId][currentMonth].visibleCols = newVis;
+        }
+        saveState(); closeModal('visModal'); renderApp();
+    };
+
+    /* ================= 跨月活动管理 ================= */
+    let tempEvents =[];
+    window.openEventModal = function() {
+        const catId = globalState.currentCatId;
+        tempEvents = JSON.parse(JSON.stringify(globalState.events[catId] ||[]));
+        renderEventListModal();
+        document.getElementById('eventModal').style.display = 'flex';
+    };
+
+    function renderEventListModal() {
+        const list = document.getElementById('eventList'); list.innerHTML = '';
+        if (tempEvents.length === 0) { list.innerHTML = '<div style="color:#888; text-align:center; padding: 20px;">当前暂无设置的活动</div>'; }
+        
+        tempEvents.forEach((ev, index) => {
+            const div = document.createElement('div'); div.className = 'cat-item';
+            div.innerHTML = `
+                <div class="cat-row-top" style="margin-bottom: 12px;">
+                    <span style="font-weight:bold; color:var(--theme-color);">活动 ${index+1}</span>
+                    <input type="date" value="${ev.start}" onchange="updateTempEvent(${index}, 'start', this.value)" style="padding: 4px; border: 1px solid #ccc; border-radius: 4px;">
+                    <span style="color:#888;">至</span>
+                    <input type="date" value="${ev.end}" onchange="updateTempEvent(${index}, 'end', this.value)" style="padding: 4px; border: 1px solid #ccc; border-radius: 4px;">
+                    <span class="action-link" style="margin-left: auto;" onclick="removeTempEvent(${index})">删除</span>
+                </div>
+                <div class="cat-defaults">
+                    <span>移动拉新: <input type="number" step="0.1" value="${ev.prices.mobile}" onchange="updateTempEventPrice(${index}, 'mobile', this.value)"></span>
+                    <span>PC拉新: <input type="number" step="0.1" value="${ev.prices.pc}" onchange="updateTempEventPrice(${index}, 'pc', this.value)"></span>
+                    <span>移动转存: <input type="number" step="0.01" value="${ev.prices.mobileSaves}" onchange="updateTempEventPrice(${index}, 'mobileSaves', this.value)"></span>
+                    <span>PC转存: <input type="number" step="0.01" value="${ev.prices.pcSaves}" onchange="updateTempEventPrice(${index}, 'pcSaves', this.value)"></span>
+                </div>
+            `;
+            list.appendChild(div);
+        });
+    }
+
+    window.addTempEvent = function() {
+        const catId = globalState.currentCatId;
+        const def = globalState.categories.find(c => c.id === catId).defaultPrices;
+        tempEvents.push({
+            id: 'ev_' + Date.now(), start: currentMonth + '-01', end: currentMonth + '-05',
+            prices: { mobile: def.mobile, pc: def.pc, mobileSaves: def.mobileSaves, pcSaves: def.pcSaves }
+        });
+        renderEventListModal();
+    };
+    
+    window.updateTempEvent = function(i, f, v) { tempEvents[i][f] = v; };
+    window.updateTempEventPrice = function(i, f, v) { tempEvents[i].prices[f] = parseFloat(v) || 0; };
+    window.removeTempEvent = function(i) { tempEvents.splice(i, 1); renderEventListModal(); };
+
+    function hasOverlap(events) {
+        let valid = events.filter(e => e.start && e.end && e.start <= e.end);
+        valid.sort((a, b) => a.start.localeCompare(b.start));
+        for(let i=0; i < valid.length - 1; i++) {
+            if (valid[i].end >= valid[i+1].start) return true;
+        }
+        return false;
+    }
+
+    window.saveEvents = function() {
+        for (let ev of tempEvents) {
+            if (!ev.start || !ev.end || ev.start > ev.end) return alert('请确保所有活动的开始日期不能晚于结束日期！');
+        }
+        if (hasOverlap(tempEvents)) return alert('保存失败：活动日期存在冲突（有重叠天数），请修改！');
+        
+        recordHistory();
+        globalState.events[globalState.currentCatId] = JSON.parse(JSON.stringify(tempEvents));
+        saveState(); closeModal('eventModal'); renderApp();
+    };
+
+    /* ================= 网盘配置管理 ================= */
+    let tempCategories =[];
+    window.openCatModal = function() {
+        tempCategories = JSON.parse(JSON.stringify(globalState.categories));
+        renderCatListModal();
+        document.getElementById('catModal').style.display = 'flex';
+    };
+
+    function renderCatListModal() {
+        const list = document.getElementById('catList'); list.innerHTML = '';
+        tempCategories.forEach((cat, index) => {
+            const div = document.createElement('div'); div.className = 'cat-item';
+            div.innerHTML = `
+                <div class="cat-row-top">
+                    <input type="color" value="${cat.color}" onchange="updateTempCat(${index}, 'color', this.value)" style="cursor:pointer; padding:0; height:32px;">
+                    <input type="text" value="${cat.name}" onchange="updateTempCat(${index}, 'name', this.value)" placeholder="网盘名称">
+                    <span class="action-link" onclick="removeTempCat(${index})">删除</span>
+                </div>
+                <div class="cat-defaults">
+                    <span>移动拉新: <input type="number" step="0.1" value="${cat.defaultPrices.mobile}" onchange="updateTempCatPrice(${index}, 'mobile', this.value)"></span>
+                    <span>PC拉新: <input type="number" step="0.1" value="${cat.defaultPrices.pc}" onchange="updateTempCatPrice(${index}, 'pc', this.value)"></span>
+                    <span>移动转存: <input type="number" step="0.01" value="${cat.defaultPrices.mobileSaves}" onchange="updateTempCatPrice(${index}, 'mobileSaves', this.value)"></span>
+                    <span>PC转存: <input type="number" step="0.01" value="${cat.defaultPrices.pcSaves}" onchange="updateTempCatPrice(${index}, 'pcSaves', this.value)"></span>
+                </div>`;
+            list.appendChild(div);
+        });
+    }
+
+    window.updateTempCat = function(i, f, v) { tempCategories[i][f] = v; };
+    window.updateTempCatPrice = function(i, f, v) { tempCategories[i].defaultPrices[f] = parseFloat(v) || 0; };
+    window.removeTempCat = function(i) { if(tempCategories.length === 1) return alert('至少需保留一个！'); tempCategories.splice(i, 1); renderCatListModal(); };
+    window.addCategory = function() {
+        tempCategories.push({
+            id: 'cat_' + new Date().getTime(), name: '新网盘', color: '#13c2c2',
+            defaultPrices: { mobile: 5, pc: 2, mobileSaves: 0.2, pcSaves: 0.1 },
+            visibleCols: { mobile: true, pc: true, mobileSaves: true, pcSaves: true, share: true, weekday: true }
+        }); renderCatListModal();
+    };
+    window.saveCategories = function() {
+        recordHistory(); globalState.categories = tempCategories;
+        if (!globalState.categories.find(c => c.id === globalState.currentCatId)) globalState.currentCatId = globalState.categories[0].id;
+        globalState.categories.forEach(cat => { if (!globalState.gridData[cat.id]) globalState.gridData[cat.id] = {}; if (!globalState.prices[cat.id]) globalState.prices[cat.id] = {}; });
+        saveState(); closeModal('catModal'); renderApp();
+    };
+</script>
+
+</body>
 </html>
